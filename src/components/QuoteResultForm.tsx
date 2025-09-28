@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalculationResult, GrandSummary, Payment, CalculationLine, DayBreakdown, MakeupForm, HairForm } from '../types';
+import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, HairForm } from '../types';
 import jsPDF from 'jspdf';
 
 interface QuoteResultFormProps {
@@ -388,7 +388,6 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 20;
-      const contentWidth = pageWidth - (margin * 2);
       let currentY = margin;
       const lineHeight = 6;
       const sectionSpacing = 10;

@@ -83,9 +83,6 @@ function calculateMakeupService(
 
     const lines: CalculationLine[] = [];
 
-    // Assistants (informational only)
-    const assistants = Math.max(0, (day as any).numPeople - 1);
-
     // Guests
     if (day.guests > 0) {
       lines.push({
@@ -246,9 +243,6 @@ function calculateHairService(
     };
 
     const lines: CalculationLine[] = [];
-
-    // Assistants (informational only)
-    const assistants = Math.max(0, (day as any).numPeople - 1);
 
     // Guests
     if (day.guests > 0) {
