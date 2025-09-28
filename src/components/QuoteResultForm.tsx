@@ -1,0 +1,923 @@
+import React, { useState, useEffect } from 'react';
+import { CalculationResult, GrandSummary, Payment, CalculationLine, DayBreakdown, MakeupForm, HairForm } from '../types';
+import jsPDF from 'jspdf';
+
+interface QuoteResultFormProps {
+  calculations: CalculationResult[];
+  grandSummary: GrandSummary;
+  brideName: string;
+  onPaymentUpdate: (calculations: CalculationResult[]) => void;
+  onStartOver: () => void;
+  onEditForm?: () => void;
+  // Cross-fill (optional)
+  trialSyncEnabled?: boolean;
+  makeupForm?: MakeupForm;
+  hairForm?: HairForm;
+}
+
+export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
+  calculations,
+  grandSummary,
+  brideName,
+  onPaymentUpdate,
+  onStartOver,
+  onEditForm,
+  trialSyncEnabled,
+  makeupForm,
+  hairForm
+}) => {
+  const [localCalculations, setLocalCalculations] = useState<CalculationResult[]>(calculations);
+
+  const generatePaymentId = () => {
+    return `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  const addPayment = (calculationIndex: number) => {
+    const updatedCalculations = localCalculations.map((calc, index) => {
+      if (index === calculationIndex) {
+        const newPayment: Payment = {
+          id: generatePaymentId(),
+          date: new Date().toISOString().split('T')[0],
+          occasion: '',
+          amount: 0
+        };
+        const updatedPayments = [...calc.payments, newPayment];
+        const totalPaid = updatedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        return {
+          ...calc,
+          payments: updatedPayments,
+          totalPaid,
+          due: Math.max(0, calc.subtotal - totalPaid)
+        };
+      }
+      return calc;
+    });
+    setLocalCalculations(updatedCalculations);
+    onPaymentUpdate(updatedCalculations);
+  };
+
+  const updatePayment = (calculationIndex: number, paymentId: string, field: keyof Payment, value: string | number) => {
+    const updatedCalculations = localCalculations.map((calc, index) => {
+      if (index === calculationIndex) {
+        const updatedPayments = calc.payments.map(payment => {
+          if (payment.id === paymentId) {
+            return { ...payment, [field]: value };
+          }
+          return payment;
+        });
+        const totalPaid = updatedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        return {
+          ...calc,
+          payments: updatedPayments,
+          totalPaid,
+          due: Math.max(0, calc.subtotal - totalPaid)
+        };
+      }
+      return calc;
+    });
+    setLocalCalculations(updatedCalculations);
+    onPaymentUpdate(updatedCalculations);
+  };
+
+  const removePayment = (calculationIndex: number, paymentId: string) => {
+    const updatedCalculations = localCalculations.map((calc, index) => {
+      if (index === calculationIndex) {
+        const updatedPayments = calc.payments.filter(payment => payment.id !== paymentId);
+        const totalPaid = updatedPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        return {
+          ...calc,
+          payments: updatedPayments,
+          totalPaid,
+          due: Math.max(0, calc.subtotal - totalPaid)
+        };
+      }
+      return calc;
+    });
+    setLocalCalculations(updatedCalculations);
+    onPaymentUpdate(updatedCalculations);
+  };
+
+  const formatCurrency = (amount: number) => `€${amount.toFixed(2)}`;
+
+  const formatWeddingDates = (dates: string[]) => {
+    if (dates.length === 0) return '';
+    return dates.join(', ');
+  };
+
+  const formatDateForDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Build a quick lookup of venues per date across services
+  const computeVenueByDate = (calcs: CalculationResult[]) => {
+    const map: Record<string, Set<string>> = {};
+    calcs.forEach(c => (c.dayBreakdowns || []).forEach(d => {
+      if (!map[d.date]) map[d.date] = new Set();
+      if (d.venue && d.venue.trim()) map[d.date].add(d.venue.trim());
+    }));
+    // Convert to single string if unique, else empty for ambiguity
+    const out: Record<string, string> = {};
+    Object.entries(map).forEach(([date, venues]) => {
+      out[date] = venues.size === 1 ? Array.from(venues)[0] : '';
+    });
+    return out;
+  };
+
+  const venueByDate = computeVenueByDate(localCalculations);
+  const formatDateWithVenue = (dateStr: string, venue?: string) => {
+    const d = formatDateForDisplay(dateStr);
+    const v = venue && venue.trim() ? venue.trim() : (venueByDate[dateStr] || '').trim();
+    return v ? `${d} — ${v}` : d;
+  };
+
+  const extractGlobalLines = (calc: CalculationResult): CalculationLine[] => {
+    return (calc.lines || []).filter(l => !l.meta || /^\d{2}\/\d{2}\/\d{4}\s•/.test(l.meta) === false)
+      .filter(l => l.label.toLowerCase().includes('trial'));
+  };
+
+  const copyTableAsHTML = () => {
+    const htmlContent = localCalculations.map(calc => {
+      const globalLines = extractGlobalLines(calc);
+
+      const globalHTML = globalLines.length > 0 ? `
+        <div style="padding: 12px 24px;">
+          <h4 style="margin: 0 0 8px 0; font-weight: 600; color: #374151;">Pre-wedding</h4>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="padding: 8px; text-align: left;">Service</th>
+                <th style="padding: 8px; text-align: center;">Calculation</th>
+                <th style="padding: 8px; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${globalLines.map(line => `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 8px 12px; text-align: left;">${line.meta ? `${line.label} (${line.meta})` : line.label}</td>
+                  <td style="padding: 8px 12px; text-align: center; font-family: monospace;">${line.qty && line.unit ? `${line.qty} × €${line.unit.toFixed(2)}` : ''}</td>
+                  <td style="padding: 8px 12px; text-align: right; font-weight: 600; font-family: monospace;">€${line.total.toFixed(2)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '';
+
+      const perDayHTML = (calc.dayBreakdowns || []).map(day => {
+        const linesHTML = day.lines.map(line => `
+          <tr style=\"border-bottom: 1px solid #e5e7eb;\">
+            <td style=\"padding: 8px 12px; text-align: left;\">${line.meta ? `${line.label} (${line.meta})` : line.label}</td>
+            <td style=\"padding: 8px 12px; text-align: center; font-family: monospace;\">${line.qty && line.unit ? `${line.qty} × €${line.unit.toFixed(2)}` : ''}</td>
+            <td style=\"padding: 8px 12px; text-align: right; font-weight: 600; font-family: monospace;\">€${line.total.toFixed(2)}</td>
+          </tr>`).join('');
+        return `
+          <div style=\"padding: 12px 24px;\">
+            <h4 style=\"margin: 0 0 8px 0; font-weight: 600; color: #374151;\">${formatDateWithVenue(day.date, day.venue)}</h4>
+            <table style=\"width: 100%; border-collapse: collapse;\">
+              <thead>
+                <tr style=\"background: #f3f4f6;\">
+                  <th style=\"padding: 12px; text-align: left;\">Service</th>
+                  <th style=\"padding: 12px; text-align: center;\">Calculation</th>
+                  <th style=\"padding: 12px; text-align: right;\">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${linesHTML}
+                <tr style=\"background: #fffbeb; border-top: 2px solid #f59e0b;\">
+                  <td style=\"padding: 12px; font-weight: 700; color: #92400e;\">Subtotal</td>
+                  <td style=\"padding: 12px;\"></td>
+                  <td style=\"padding: 12px; text-align: right; font-weight: 700; font-family: monospace; color: #92400e; font-size: 16px;\">€${day.subtotal.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+      }).join('');
+
+      const paymentsHTML = calc.payments.length > 0 ? calc.payments.map(payment => 
+        `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-weight: 500; color: #374151;">${formatDateForDisplay(payment.date)}: ${payment.occasion || 'Payment'}</span>
+          <span style="font-family: monospace; font-weight: 600; color: #059669;">€${payment.amount.toFixed(2)}</span>
+        </div>`
+      ).join('') : `<div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; color: #374151;">No payments recorded</span>
+          <span style="font-family: monospace; font-weight: 600; color: #6b7280;">€0.00</span>
+        </div>`;
+
+      return `
+        <div style="margin-bottom: 32px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; overflow: hidden;">
+          <div style="padding: 16px 24px; background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">${calc.artistName}</h3>
+            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">Wedding Date(s): ${formatWeddingDates(calc.weddingDates)}</p>
+          </div>
+          ${globalHTML}
+          ${perDayHTML}
+          <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
+            <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">PAYMENTS:</h4>
+            ${paymentsHTML}
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 2px solid #e5e7eb;">
+              <span style="font-weight: 700; color: #dc2626;">DUE:</span>
+              <span style="font-family: monospace; font-weight: 700; color: #dc2626; font-size: 16px;">€${calc.due.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const perDayTotals = computePerDayTotals(localCalculations);
+    const perDayTotalsHTML = perDayTotals.length > 0 ? `
+      <div style="margin-top: 16px; background: #fff; border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow: hidden;">
+        <div style="background: #111827; color: white; padding: 12px 20px; text-align: center;">
+          <h3 style="margin: 0; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Final Financial Summary per Day</h3>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tbody>
+            ${perDayTotals.map(d => `
+              <tr>
+                <td style="padding: 12px 20px; font-weight: 600; color: #1f2937;">${formatDateWithVenue(d.date)}</td>
+                <td style="padding: 12px 20px; text-align: right; font-family: monospace; font-weight: 700; color: #1f2937;">€${d.total.toFixed(2)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : '';
+
+    const grandSummaryHTML = localCalculations.length > 1 ? `
+      <div style="margin-top: 16px; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.1); border: 2px solid #3b82f6; overflow: hidden;">
+        <div style="background: #3b82f6; color: white; padding: 16px 24px; text-align: center;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Grand Summary</h3>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tbody>
+            <tr>
+              <td style="padding: 16px 24px; font-weight: 700; color: #1f2937; font-size: 16px;">GRAND TOTAL</td>
+              <td style="padding: 16px 24px; text-align: right; font-family: monospace; font-weight: 700; color: #1f2937; font-size: 18px;">€${grandSummary.grandTotal.toFixed(2)}</td>
+            </tr>
+            <tr style="border-top: 1px solid #d1d5db;">
+              <td style="padding: 12px 24px; font-weight: 600; color: #059669;">TOTAL PAID</td>
+              <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 600; color: #059669;">€${grandSummary.totalPaid.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 24px; font-weight: 700; color: #dc2626;">TOTAL DUE</td>
+              <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 700; color: #dc2626; font-size: 16px;">€${grandSummary.totalDue.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>` : '';
+
+    return `
+      <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; padding: 16px;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1f2937;">${brideName ? `${brideName}'s Wedding` : 'FRESH FACED'}</h1>
+          <p style="margin: 4px 0 0 0; color: #6b7280;">${brideName ? 'Financial Summary' : 'Professional Makeup & Hair Services Quote'}</p>
+        </div>
+        ${htmlContent}
+        ${perDayTotalsHTML}
+        ${grandSummaryHTML}
+      </div>`;
+  };
+
+  const computePerDayTotals = (calcs: CalculationResult[]) => {
+    const totals: Record<string, number> = {};
+    calcs.forEach(c => {
+      (c.dayBreakdowns || []).forEach(d => {
+        totals[d.date] = (totals[d.date] || 0) + d.subtotal;
+      });
+    });
+    return Object.entries(totals).map(([date, total]) => ({ date, total }));
+  };
+
+  const generatePlainTextTable = () => {
+    const formatLine = (label: string, calculation: string, total: string) => {
+      const labelPadded = label.padEnd(35);
+      const calcPadded = calculation.padEnd(20);
+      return `${labelPadded} ${calcPadded} ${total.padStart(12)}`;
+    };
+
+    const separator = '='.repeat(70);
+    const lineSeparator = '-'.repeat(70);
+
+    let content = `${brideName ? `${brideName.toUpperCase()}'S WEDDING - FINANCIAL SUMMARY` : 'FRESH FACED - Professional Makeup & Hair Services'}\n`;
+    content += `Quote Generated: ${new Date().toLocaleDateString('en-GB', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    })} at ${new Date().toLocaleTimeString('en-GB', { 
+      hour: '2-digit', 
+      minute: '2-digit'
+    })}\n\n`;
+    content += separator + '\n\n';
+
+    localCalculations.forEach((calc, index) => {
+      content += `${calc.artistName.toUpperCase()}\n`;
+      content += `Wedding Date(s): ${formatWeddingDates(calc.weddingDates)}\n`;
+      content += lineSeparator + '\n';
+
+      // Global lines
+      const globalLines = extractGlobalLines(calc);
+      if (globalLines.length > 0) {
+        content += 'PRE-WEDDING\n';
+        content += formatLine('SERVICE', 'CALCULATION', 'TOTAL') + '\n';
+        content += lineSeparator + '\n';
+        globalLines.forEach(line => {
+          const label = line.meta ? `${line.label} (${line.meta})` : line.label;
+          const calculation = line.qty && line.unit ? `${line.qty} × €${line.unit.toFixed(2)}` : '';
+          content += formatLine(label, calculation, `€${line.total.toFixed(2)}`) + '\n';
+        });
+        content += lineSeparator + '\n\n';
+      }
+
+      // Per-day breakdowns
+      (calc.dayBreakdowns || []).forEach(day => {
+        content += `${formatDateWithVenue(day.date, day.venue)}\n`;
+        content += formatLine('SERVICE', 'CALCULATION', 'TOTAL') + '\n';
+        content += lineSeparator + '\n';
+        day.lines.forEach(line => {
+          const label = line.meta ? `${line.label} (${line.meta})` : line.label;
+          const calculation = line.qty && line.unit ? `${line.qty} × €${line.unit.toFixed(2)}` : '';
+          content += formatLine(label, calculation, `€${line.total.toFixed(2)}`) + '\n';
+        });
+        content += lineSeparator + '\n';
+        content += formatLine('SUBTOTAL', '', `€${day.subtotal.toFixed(2)}`) + '\n\n';
+      });
+
+      content += 'PAYMENTS:\n';
+      if (calc.payments.length > 0) {
+        calc.payments.forEach(payment => {
+          const paymentLabel = `${formatDateForDisplay(payment.date)}: ${payment.occasion || 'Payment'}`;
+          content += formatLine(paymentLabel, '', `€${payment.amount.toFixed(2)}`) + '\n';
+        });
+      } else {
+        content += formatLine('No payments recorded', '', '€0.00') + '\n';
+      }
+      content += lineSeparator + '\n';
+      content += formatLine('DUE', '', `€${calc.due.toFixed(2)}`) + '\n\n';
+
+      if (index < localCalculations.length - 1) {
+        content += separator + '\n\n';
+      }
+    });
+
+    // Per-day totals across services
+    const perDayTotals = computePerDayTotals(localCalculations);
+    if (perDayTotals.length > 0) {
+      content += separator + '\n';
+      content += 'FINAL FINANCIAL SUMMARY PER DAY\n';
+      content += lineSeparator + '\n';
+      perDayTotals.forEach(d => {
+        content += formatLine(formatDateWithVenue(d.date), '', `€${d.total.toFixed(2)}`) + '\n';
+      });
+    }
+
+    if (localCalculations.length > 1) {
+      content += separator + '\n';
+      content += 'GRAND SUMMARY\n';
+      content += lineSeparator + '\n';
+      content += formatLine('GRAND TOTAL', '', `€${grandSummary.grandTotal.toFixed(2)}`) + '\n';
+      content += formatLine('TOTAL PAID', '', `€${grandSummary.totalPaid.toFixed(2)}`) + '\n';
+      content += formatLine('TOTAL DUE', '', `€${grandSummary.totalDue.toFixed(2)}`) + '\n';
+    }
+
+    return content;
+  };
+
+  const exportToPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      let currentY = margin;
+      const lineHeight = 6;
+      const sectionSpacing = 10;
+
+      // Column layout (mm)
+      const colLabelX = margin;         // label column start
+      const colCalcX = margin + 80;     // calculation column start
+      const colTotalX = margin + 140;   // total column start
+      const colLabelWidth = colCalcX - colLabelX - 2; // small padding
+      const colCalcWidth = colTotalX - colCalcX - 2;
+
+      // Sanitize any Unicode characters that jsPDF core fonts don't fully support
+      const sanitizeText = (s: string) => (s || '')
+        .replace(/[×✕✖]/g, 'x')
+        .replace(/[−–—]/g, '-')
+        .replace(/[’‘]/g, "'")
+        .replace(/[“”]/g, '"')
+        .replace(/•/g, '-')
+        .replace(/\s+/g, ' ') // collapse whitespace
+        .trim();
+
+      // Helper to draw a single row with wrapped label and optional wrapped calc
+      const drawRow = (label: string, calc: string, total: string) => {
+        const safeLabel = sanitizeText(label);
+        const safeCalc = sanitizeText(calc);
+        const safeTotal = sanitizeText(total);
+        // Split long texts to fit their columns
+        const labelLines = pdf.splitTextToSize(safeLabel, colLabelWidth);
+        const calcLines = safeCalc ? pdf.splitTextToSize(safeCalc, colCalcWidth) : [''];
+        const rowLines = Math.max(labelLines.length, calcLines.length);
+        const rowHeight = rowLines * lineHeight;
+
+        // Page break guard
+        if (currentY + rowHeight > pageHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+
+        // Draw label and calculation as multi-line blocks
+        pdf.text(labelLines, colLabelX, currentY);
+        if (safeCalc) pdf.text(calcLines, colCalcX, currentY);
+        // Total is right-aligned on a single line aligned to the first line of the row
+        if (safeTotal) pdf.text(safeTotal, colTotalX, currentY);
+        currentY += rowHeight;
+      };
+
+      // Helper to load the public/logo.jpg as a data URL
+      const loadLogoDataUrl = async (): Promise<string | null> => {
+        try {
+          const res = await fetch('/logo.jpg');
+          if (!res.ok) return null;
+          const blob = await res.blob();
+          return await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          console.warn('Logo not found or failed to load:', e);
+          return null;
+        }
+      };
+
+      // Try to load and render the logo centered at the top
+      const logoDataUrl = await loadLogoDataUrl();
+      if (logoDataUrl) {
+        // Load image to get natural dimensions for aspect ratio
+        const imgEl = await new Promise<HTMLImageElement>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.src = logoDataUrl;
+        });
+        const maxLogoW = 40; // mm
+        const maxLogoH = 20; // mm
+        const naturalW = imgEl.naturalWidth || 1;
+        const naturalH = imgEl.naturalHeight || 1;
+        const scale = Math.min(maxLogoW / naturalW, maxLogoH / naturalH);
+        const logoW = Math.max(10, naturalW * scale); // ensure visible minimum
+        const logoH = Math.max(5, naturalH * scale);
+        const logoX = (pageWidth - logoW) / 2;
+        const logoY = currentY;
+        pdf.addImage(logoDataUrl, 'JPEG', logoX, logoY, logoW, logoH);
+        currentY = logoY + logoH + 6; // spacing below logo
+      }
+
+      // Header with logo placeholder
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(brideName ? `${brideName}'s Wedding` : 'FRESH FACED', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 8;
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(brideName ? 'Financial Summary' : 'Professional Makeup & Hair Services', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 15;
+
+      localCalculations.forEach((calc, calcIndex) => {
+        if (currentY > pageHeight - 60) {
+          pdf.addPage();
+          currentY = margin;
+        }
+
+        // Artist header
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        const serviceHeader = `${calc.artistName}'s ${calc.serviceType === 'makeup' ? 'Make-up Services' : 'Hairstyling Services'}`;
+        pdf.text(serviceHeader, margin, currentY);
+        currentY += 6;
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Wedding Date(s): ${formatWeddingDates(calc.weddingDates)}`, margin, currentY);
+        currentY += sectionSpacing;
+
+        // Global lines section
+        const globalLines = extractGlobalLines(calc);
+        if (globalLines.length > 0) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('PRE-WEDDING', margin, currentY);
+          currentY += 6;
+          pdf.setFontSize(9);
+          pdf.text('SERVICE', colLabelX, currentY);
+          pdf.text('CALCULATION', colCalcX, currentY);
+          pdf.text('TOTAL', colTotalX, currentY);
+          currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
+          pdf.setFont('helvetica', 'normal');
+          globalLines.forEach(line => {
+            // If trial sync is enabled, force Trial venue meta into the Trial travel fee label for both services
+            let effectiveMeta = line.meta || '';
+            if (trialSyncEnabled && line.label.toLowerCase().startsWith('trial travel fee')) {
+              const thisVenue = (calc.serviceType === 'makeup') ? (makeupForm?.trialVenue || '') : (hairForm?.trialVenue || '');
+              const otherVenue = (calc.serviceType === 'makeup') ? (hairForm?.trialVenue || '') : (makeupForm?.trialVenue || '');
+              const venue = (thisVenue || otherVenue || '').trim();
+              if (venue) effectiveMeta = venue;
+            }
+            const label = effectiveMeta ? `${line.label} (${effectiveMeta})` : line.label;
+            const calculation = line.qty && line.unit ? `${line.qty} x €${line.unit.toFixed(2)}` : '';
+            drawRow(label, calculation, `€${line.total.toFixed(2)}`);
+          });
+          currentY += sectionSpacing;
+        }
+
+        // Per-day sections
+        (calc.dayBreakdowns || []).forEach(day => {
+          if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(11);
+          pdf.text(formatDateWithVenue(day.date, day.venue), margin, currentY);
+          currentY += 6;
+          pdf.setFontSize(9);
+          pdf.text('SERVICE', colLabelX, currentY);
+          pdf.text('CALCULATION', colCalcX, currentY);
+          pdf.text('TOTAL', colTotalX, currentY);
+          currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
+          pdf.setFont('helvetica', 'normal');
+          day.lines.forEach(line => {
+            const label = line.meta ? `${line.label} (${line.meta})` : line.label;
+            const calculation = line.qty && line.unit ? `${line.qty} × €${line.unit.toFixed(2)}` : '';
+            drawRow(label, calculation, `€${line.total.toFixed(2)}`);
+          });
+          currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('SUBTOTAL', margin, currentY);
+          pdf.text(`€${day.subtotal.toFixed(2)}`, margin + 140, currentY);
+          currentY += sectionSpacing;
+        });
+
+        // Payments section
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('PAYMENTS:', margin, currentY);
+        currentY += 6;
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        if (calc.payments.length > 0) {
+          calc.payments.forEach(payment => {
+            const paymentText = `${formatDateForDisplay(payment.date)}: ${payment.occasion || 'Payment'}`;
+            pdf.text(paymentText, margin + 10, currentY);
+            pdf.text(`€${payment.amount.toFixed(2)}`, margin + 140, currentY);
+            currentY += lineHeight;
+          });
+        } else {
+          pdf.text('No payments recorded', margin + 10, currentY);
+          pdf.text('€0.00', margin + 140, currentY);
+          currentY += lineHeight;
+        }
+        currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('DUE', margin + 10, currentY);
+        pdf.text(`€${calc.due.toFixed(2)}`, margin + 140, currentY);
+        currentY += sectionSpacing;
+
+        if (calcIndex < localCalculations.length - 1) {
+          currentY += sectionSpacing;
+        }
+      });
+
+      // Per-day totals across services
+      const perDayTotals = computePerDayTotals(localCalculations);
+      if (perDayTotals.length > 0) {
+        if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('FINAL FINANCIAL SUMMARY PER DAY', margin, currentY);
+        currentY += sectionSpacing;
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        perDayTotals.forEach(d => {
+          pdf.text(formatDateWithVenue(d.date), margin, currentY);
+          pdf.text(`€${d.total.toFixed(2)}`, margin + 140, currentY);
+          currentY += lineHeight;
+        });
+        currentY += sectionSpacing;
+      }
+
+      // Grand Summary for multiple services
+      if (localCalculations.length > 1) {
+        if (currentY > pageHeight - 40) {
+          pdf.addPage();
+          currentY = margin;
+        }
+        currentY += sectionSpacing;
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('GRAND SUMMARY', margin, currentY);
+        currentY += sectionSpacing;
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('GRAND TOTAL', margin, currentY);
+        pdf.text(`€${grandSummary.grandTotal.toFixed(2)}`, margin + 140, currentY);
+        currentY += lineHeight;
+        pdf.text('TOTAL PAID', margin, currentY);
+        pdf.text(`€${grandSummary.totalPaid.toFixed(2)}`, margin + 140, currentY);
+        currentY += lineHeight;
+        pdf.text('TOTAL DUE', margin, currentY);
+        pdf.text(`€${grandSummary.totalDue.toFixed(2)}`, margin + 140, currentY);
+      }
+
+      // Footer with timestamp
+      const footerY = pageHeight - 10;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      const timestamp = new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString('en-GB');
+      pdf.text(`Generated: ${timestamp}`, pageWidth / 2, footerY, { align: 'center' });
+
+      // Generate filename with current date
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `fresh-faced-quote-${dateStr}.pdf`;
+      pdf.save(filename);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  };
+
+  const copyRichText = async () => {
+    try {
+      const htmlContent = copyTableAsHTML();
+      const clipboardItem = new ClipboardItem({
+        'text/html': new Blob([htmlContent], { type: 'text/html' }),
+        'text/plain': new Blob([generatePlainTextTable()], { type: 'text/plain' })
+      });
+      await navigator.clipboard.write([clipboardItem]);
+      alert('Quote copied to clipboard with rich formatting!');
+    } catch (error) {
+      console.error('Error copying rich text:', error);
+      alert('Error copying to clipboard. Please try again.');
+    }
+  };
+
+  const copyPlainText = async () => {
+    try {
+      const plainText = generatePlainTextTable();
+      await navigator.clipboard.writeText(plainText);
+      alert('Quote copied to clipboard as plain text!');
+    } catch (error) {
+      console.error('Error copying plain text:', error);
+      alert('Error copying to clipboard. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    setLocalCalculations(calculations);
+  }, [calculations]);
+
+  const renderPerDayTotalsCard = () => {
+    const perDayTotals = computePerDayTotals(localCalculations);
+    if (perDayTotals.length === 0) return null;
+    return (
+      <div className="grand-summary-card" style={{ marginTop: '1rem' }}>
+        <div className="grand-summary-header">
+          <h3>Final Financial Summary per Day</h3>
+        </div>
+        <div className="grand-summary-content">
+          {perDayTotals.map(d => (
+            <div key={d.date} className="summary-row">
+              <span className="summary-label">{formatDateWithVenue(d.date)}</span>
+              <span className="summary-amount grand-total">{formatCurrency(d.total)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="quote-result-form">
+      <div className="form-header">
+        <h2>{brideName ? `${brideName}'s Wedding` : 'Quote Results'}</h2>
+        <p className="subtitle">{brideName ? 'Financial Summary' : 'Review your quote and adjust payments as needed'}</p>
+      </div>
+
+      <div className="quote-results">
+        {localCalculations.map((calc, index) => (
+          <div key={index} className="artist-quote-card">
+            <div className="artist-header">
+              <div className="artist-info">
+                <h3>{calc.artistName}</h3>
+                <p className="wedding-dates">
+                  Wedding Date{calc.weddingDates.length > 1 ? 's' : ''}: {formatWeddingDates(calc.weddingDates)}
+                </p>
+              </div>
+              {onEditForm && (
+                <button 
+                  onClick={onEditForm}
+                  className="btn btn-secondary edit-btn"
+                  aria-label="Edit form details"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+
+            {/* Global lines (pre-wedding) */}
+            {extractGlobalLines(calc).length > 0 && (
+              <div className="quote-table-container">
+                <table className="quote-table">
+                  <thead>
+                    <tr>
+                      <th>Pre-wedding</th>
+                      <th className="calculation-col">Calculation</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extractGlobalLines(calc).map((line, i) => (
+                      <tr key={i}>
+                        <td className="service-label">
+                          {line.meta ? `${line.label} (${line.meta})` : line.label}
+                        </td>
+                        <td className="calculation-col">
+                          {line.qty && line.unit ? `${line.qty} × ${formatCurrency(line.unit)}` : ''}
+                        </td>
+                        <td className="total-amount">{formatCurrency(line.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Per-day sections */}
+            {(calc.dayBreakdowns || []).map((day, dIdx) => (
+              <div key={dIdx} className="quote-table-container" style={{ marginTop: '0.5rem' }}>
+                <div className="artist-header" style={{ padding: '0.5rem 0' }}>
+                  <div className="artist-info">
+                    <h4 style={{ margin: 0 }}>{formatDateWithVenue(day.date, day.venue)}</h4>
+                  </div>
+                </div>
+                <table className="quote-table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th className="calculation-col">Calculation</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {day.lines.map((line, lineIndex) => (
+                      <tr key={lineIndex}>
+                        <td className="service-label">
+                          {line.meta ? `${line.label} (${line.meta})` : line.label}
+                        </td>
+                        <td className="calculation-col">
+                          {line.qty && line.unit ? `${line.qty} × ${formatCurrency(line.unit)}` : ''}
+                        </td>
+                        <td className="total-amount">{formatCurrency(line.total)}</td>
+                      </tr>
+                    ))}
+                    <tr className="subtotal-row">
+                      <td className="subtotal-label">Subtotal</td>
+                      <td className="calculation-col"></td>
+                      <td className="subtotal-amount">{formatCurrency(day.subtotal)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+            <div className="payments-section">
+              <div className="payments-header">
+                <h4>Payments</h4>
+                <button 
+                  onClick={() => addPayment(index)}
+                  className="btn btn-secondary btn-small"
+                  aria-label="Add new payment"
+                >
+                  + Add Payment
+                </button>
+              </div>
+              {calc.payments.length === 0 ? (
+                <div className="no-payments">
+                  <p>No payments recorded yet</p>
+                </div>
+              ) : (
+                <div className="payments-list">
+                  {calc.payments.map((payment) => (
+                    <div key={payment.id} className="payment-item">
+                      <div className="payment-fields">
+                        <div className="payment-field">
+                          <label htmlFor={`date-${payment.id}`} className="payment-field-label">Date</label>
+                          <input
+                            id={`date-${payment.id}`}
+                            type="date"
+                            value={payment.date}
+                            onChange={(e) => updatePayment(index, payment.id, 'date', e.target.value)}
+                            className="payment-date-input"
+                          />
+                        </div>
+                        <div className="payment-field">
+                          <label htmlFor={`occasion-${payment.id}`} className="payment-field-label">Occasion</label>
+                          <input
+                            id={`occasion-${payment.id}`}
+                            type="text"
+                            value={payment.occasion}
+                            onChange={(e) => updatePayment(index, payment.id, 'occasion', e.target.value)}
+                            placeholder="e.g., Make-up trial"
+                            className="payment-occasion-input"
+                          />
+                        </div>
+                        <div className="payment-field">
+                          <label htmlFor={`amount-${payment.id}`} className="payment-field-label">Amount</label>
+                          <div className="payment-amount-wrapper">
+                            <span className="currency" aria-hidden="true">€</span>
+                            <input
+                              id={`amount-${payment.id}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={payment.amount}
+                              onChange={(e) => updatePayment(index, payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                              className="payment-amount-input"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removePayment(index, payment.id)}
+                          className="btn btn-danger btn-small payment-remove-btn"
+                          aria-label="Remove payment"
+                          title="Remove payment"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="payment-display">
+                        <span className="payment-display-text">
+                          {formatDateForDisplay(payment.date)}: {payment.occasion || 'Payment'} 
+                          <span className="payment-dots">......</span>
+                          <span className="payment-amount-display">{formatCurrency(payment.amount)}</span>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="payment-summary">
+                <div className="payment-summary-row">
+                  <span className="payment-summary-label">TOTAL PAID:</span>
+                  <span className="payment-summary-amount paid-total">{formatCurrency(calc.totalPaid)}</span>
+                </div>
+                <div className="payment-summary-row">
+                  <span className="payment-summary-label">DUE:</span>
+                  <span className="payment-summary-amount due-total">{formatCurrency(calc.due)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {renderPerDayTotalsCard()}
+
+        {localCalculations.length > 1 && (
+          <div className="grand-summary-card">
+            <div className="grand-summary-header">
+              <h3>Grand Summary</h3>
+            </div>
+            <div className="grand-summary-content">
+              <div className="summary-row">
+                <span className="summary-label">GRAND TOTAL</span>
+                <span className="summary-amount grand-total">{formatCurrency(grandSummary.grandTotal)}</span>
+              </div>
+              <div className="summary-row">
+                <span className="summary-label">TOTAL PAID</span>
+                <span className="summary-amount paid-total">{formatCurrency(grandSummary.totalPaid)}</span>
+              </div>
+              <div className="summary-row">
+                <span className="summary-label">TOTAL DUE</span>
+                <span className="summary-amount due-total">{formatCurrency(grandSummary.totalDue)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="export-actions">
+        <button onClick={copyRichText} className="btn btn-secondary">
+          Copy Table (Rich Text)
+        </button>
+        <button onClick={copyPlainText} className="btn btn-secondary">
+          Copy Plain Text
+        </button>
+        <button onClick={exportToPDF} className="btn btn-secondary">
+          Export PDF
+        </button>
+      </div>
+
+      <div className="form-actions">
+        <button onClick={onStartOver} className="btn btn-secondary">
+          Start Over
+        </button>
+      </div>
+    </div>
+  );
+};
