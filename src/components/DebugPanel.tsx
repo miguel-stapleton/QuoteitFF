@@ -13,15 +13,26 @@ interface DebugPanelProps {
 export const DebugPanel: React.FC<DebugPanelProps> = ({ onLoadScenario }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Only show in development
-  if (process.env.NODE_ENV !== 'development') {
+  // Only show in development (Vite)
+  if (!import.meta.env.DEV) {
     return null;
   }
 
   const today = new Date();
   const toISO = (d: Date) => d.toISOString().split('T')[0];
 
-  const scenarios = {
+  type Scenario = {
+    name: string;
+    description: string;
+    data: {
+      serviceChoice: ServiceChoice;
+      multiDay: MultiDay;
+      makeupForm?: MakeupForm;
+      hairForm?: HairForm;
+    };
+  };
+
+  const scenarios: Record<string, Scenario> = {
     carsVsAssistantsMakeup: {
       name: 'Cars vs assistants example (Make-up)',
       description: 'People: 7, Cars: 2, Travel fee: 100 → Expect Travelling fee €200 and Assistant travel fee €175.',
@@ -123,11 +134,16 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ onLoadScenario }) => {
         } as MakeupForm
       }
     }
-  } as const;
+  };
 
   const handleLoadScenario = (scenarioKey: keyof typeof scenarios) => {
     const scenario = scenarios[scenarioKey];
-    onLoadScenario(scenario.data);
+    // Ensure arrays are mutable when passing
+    const data = {
+      ...scenario.data,
+      multiDay: { ...scenario.data.multiDay, dates: [...scenario.data.multiDay.dates] }
+    };
+    onLoadScenario(data);
     setIsOpen(false);
   };
 

@@ -57,7 +57,7 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
     updateCalculations('default', defaultPrices);
   };
 
-  const updateCalculations = (mode: PriceMode, prices: DefaultPrices) => {
+  const updateCalculations = (_mode: PriceMode, prices: DefaultPrices) => {
     const weddingDates = multiDay.dates.filter(date => date !== '').slice(0, multiDay.count || 1);
     
     const calculationResult = calculateQuote({

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ViewState, ServiceChoice, MultiDay, MakeupForm, HairForm } from './types';
 import { useTheme } from './hooks/useTheme';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -29,10 +29,6 @@ export default function App() {
 
   const handleFormSubmit = () => {
     setCurrentView('confirmation');
-  };
-
-  const handleBackToForm = () => {
-    setCurrentView('form');
   };
 
   const handlePriceConfirmation = () => {
@@ -158,7 +154,7 @@ export default function App() {
   return (
     <div className="container">
       <ThemeToggle theme={theme} onToggle={toggleTheme} />
-      <ProgressIndicator currentState={currentView} />
+      <ProgressIndicator currentState={currentView as ViewState} />
       {renderCurrentView()}
       <DebugPanel onLoadScenario={handleLoadScenario} />
     </div>

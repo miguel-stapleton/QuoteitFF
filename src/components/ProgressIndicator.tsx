@@ -1,11 +1,10 @@
-import React from 'react';
-import { AppState } from '../types';
+import { ViewState } from '../types';
 
 interface ProgressIndicatorProps {
-  currentState: AppState;
+  currentState: ViewState;
 }
 
-export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ currentState }) => {
+export const ProgressIndicator = ({ currentState }: ProgressIndicatorProps) => {
   const steps = [
     { id: 'form', label: '1', name: 'Details' },
     { id: 'confirmation', label: '2', name: 'Confirm' },
