@@ -50,7 +50,7 @@ export const makeupArtistPrices: Record<MakeupArtist, ServicePricing> = {
     touchupHourly: 50,
     exclusivityFee: 100
   },
-  [MakeupArtist['Inês']]: {
+  [MakeupArtist.Ines]: {
     trialUnit: 150,
     bridalUnit: 300,
     guestUnit: 75,
@@ -86,7 +86,7 @@ export const makeupArtistPrices: Record<MakeupArtist, ServicePricing> = {
     touchupHourly: 50,
     exclusivityFee: 100
   },
-  [MakeupArtist['Ana Neves']]: {
+  [MakeupArtist.AnaNeves]: {
     trialUnit: 125,
     bridalUnit: 250,
     guestUnit: 75,
@@ -95,7 +95,7 @@ export const makeupArtistPrices: Record<MakeupArtist, ServicePricing> = {
     touchupHourly: 50,
     exclusivityFee: 100
   },
-  [MakeupArtist['Ana Roma']]: {
+  [MakeupArtist.AnaRoma]: {
     trialUnit: 125,
     bridalUnit: 250,
     guestUnit: 75,
