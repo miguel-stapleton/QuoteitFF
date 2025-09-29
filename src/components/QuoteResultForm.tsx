@@ -31,7 +31,6 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   makeupForm,
   hairForm,
   getAppState,
-  applyLoadedAppState,
   appVersion
 }) => {
   const [localCalculations, setLocalCalculations] = useState<CalculationResult[]>(calculations);
