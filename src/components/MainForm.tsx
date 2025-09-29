@@ -4,6 +4,7 @@ import { WeddingBasicsForm } from './WeddingBasicsForm';
 import { ServiceSelectionForm } from './ServiceSelectionForm';
 import { MakeupServiceForm } from './MakeupServiceForm';
 import { HairServiceForm } from './HairServiceForm';
+import { QuotesAPI, QuoteListItem } from '../api/quotes';
 
 interface MainFormProps {
   onSubmit: () => void;
@@ -20,6 +21,7 @@ interface MainFormProps {
   beautyVenueSyncEnabled: boolean[];
   onTrialSyncChange: (enabled: boolean) => void;
   onBeautyVenueSyncToggle: (index: number, enabled: boolean) => void;
+  applyLoadedAppState?: (state: any) => void;
 }
 
 export const MainForm: React.FC<MainFormProps> = ({ 
@@ -36,10 +38,41 @@ export const MainForm: React.FC<MainFormProps> = ({
   trialSyncEnabled,
   beautyVenueSyncEnabled,
   onTrialSyncChange,
-  onBeautyVenueSyncToggle
+  onBeautyVenueSyncToggle,
+  applyLoadedAppState
 }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const openLoadModal = async () => {
+    try {
+      setLoadError(null);
+      setShowLoadModal(true);
+      setLoadingQuotes(true);
+      const items = await QuotesAPI.list();
+      setQuotes(items);
+    } catch (e) {
+      console.error(e);
+      setLoadError('Failed to fetch saved schedules. Ensure the backend is running and your IP is allowed in MongoDB Atlas.');
+    } finally {
+      setLoadingQuotes(false);
+    }
+  };
+
+  const loadQuoteById = async (id: string) => {
+    try {
+      const full = await QuotesAPI.get(id);
+      applyLoadedAppState && applyLoadedAppState(full.appState);
+      setShowLoadModal(false);
+    } catch (e) {
+      console.error(e);
+      setLoadError('Failed to load the selected schedule.');
+    }
+  };
 
   const violatesSRRules = (form: { perDay: any[] } | undefined) => {
     if (!form || !form.perDay) return false;
@@ -240,6 +273,13 @@ export const MainForm: React.FC<MainFormProps> = ({
           </div>
           <div className="header-actions">
             <button 
+              className="btn btn-secondary"
+              onClick={openLoadModal}
+              title="Load a previously saved schedule"
+            >
+              📂 Load Schedule
+            </button>
+            <button 
               className="settings-btn"
               onClick={() => setShowSettings(!showSettings)}
               title="Settings"
@@ -280,6 +320,37 @@ export const MainForm: React.FC<MainFormProps> = ({
                 >
                   Clear All Data
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Load Schedule Modal */}
+        {showLoadModal && (
+          <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h3>Load a Saved Schedule</h3>
+              {loadingQuotes && <p>Loading…</p>}
+              {loadError && <p style={{ color: '#b91c1c' }}>{loadError}</p>}
+              {!loadingQuotes && !loadError && (
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  {quotes.length === 0 ? (
+                    <p>No saved schedules found.</p>
+                  ) : (
+                    quotes.map(q => (
+                      <div key={q._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{q.title}</div>
+                          <small>Updated: {new Date(q.updatedAt).toLocaleString('en-GB')}</small>
+                        </div>
+                        <button className="btn btn-secondary btn-small" onClick={() => loadQuoteById(q._id)}>Load</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+              <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                <button className="btn btn-secondary" onClick={() => setShowLoadModal(false)}>Close</button>
               </div>
             </div>
           </div>

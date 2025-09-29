@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, HairForm } from '../types';
 import jsPDF from 'jspdf';
+import { QuotesAPI } from '../api/quotes';
 
 interface QuoteResultFormProps {
   calculations: CalculationResult[];
@@ -13,6 +14,10 @@ interface QuoteResultFormProps {
   trialSyncEnabled?: boolean;
   makeupForm?: MakeupForm;
   hairForm?: HairForm;
+  // Save/Load hooks
+  getAppState?: () => any;
+  applyLoadedAppState?: (state: any) => void;
+  appVersion?: string;
 }
 
 export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
@@ -24,12 +29,69 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   onEditForm,
   trialSyncEnabled,
   makeupForm,
-  hairForm
+  hairForm,
+  getAppState,
+  applyLoadedAppState,
+  appVersion
 }) => {
   const [localCalculations, setLocalCalculations] = useState<CalculationResult[]>(calculations);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<null | { type: 'success' | 'error' | 'info'; text: string }>(null);
+  const showNotice = (n: { type: 'success' | 'error' | 'info'; text: string }, timeoutMs = 3500) => {
+    setNotice(n);
+    if (timeoutMs > 0) {
+      window.setTimeout(() => setNotice(null), timeoutMs);
+    }
+  };
 
   const generatePaymentId = () => {
     return `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Single-button quick save: uses automatic title; overwrites on duplicate
+  const handleQuickSave = async () => {
+    if (!getAppState) {
+      showNotice({ type: 'error', text: 'Saving is unavailable in this context.' });
+      return;
+    }
+    const dateStr = new Date().toISOString().split('T')[0];
+    const title = (brideName && brideName.trim()) ? `${brideName} — ${dateStr}` : `Quote — ${dateStr}`;
+    const payload = { title, appState: getAppState(), version: appVersion };
+    setSaving(true);
+    try {
+      await QuotesAPI.create(payload);
+      showNotice({ type: 'success', text: 'Quote saved successfully.' });
+    } catch (e: any) {
+      // If duplicate, auto-overwrite existing
+      if (e?.status === 409) {
+        try {
+          const existingId = e?.body?.id || (await (async () => {
+            try {
+              const list = await QuotesAPI.list();
+              const match = list.find(q => q.title === title);
+              return match?._id;
+            } catch (err) {
+              console.error('Failed to list quotes for overwrite fallback', err);
+              return undefined;
+            }
+          })());
+          if (existingId) {
+            await QuotesAPI.update(existingId, { title, appState: payload.appState, version: appVersion });
+            showNotice({ type: 'success', text: 'Existing quote overwritten successfully.' });
+          } else {
+            showNotice({ type: 'error', text: 'A quote with this title already exists, but it could not be found for overwrite. Please try a different day or rename.' });
+          }
+        } catch (err) {
+          console.error(err);
+          showNotice({ type: 'error', text: 'Failed to overwrite existing quote.' });
+        }
+      } else {
+        console.error(e);
+        showNotice({ type: 'error', text: 'Failed to save quote. Ensure the backend is running and your IP is allowed in MongoDB Atlas.' });
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addPayment = (calculationIndex: number) => {
@@ -414,7 +476,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         .replace(/[’‘]/g, "'")
         .replace(/[“”]/g, '"')
         .replace(/•/g, '-')
-        .replace(/\s+/g, ' ') // collapse whitespace
+        .replace(/\s+/g, ' ')
         .trim();
 
       // Helper to draw a single row with wrapped label and optional wrapped calc
@@ -442,46 +504,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         currentY += rowHeight;
       };
 
-      // Helper to load the public/logo.jpg as a data URL
-      const loadLogoDataUrl = async (): Promise<string | null> => {
-        try {
-          const res = await fetch('/logo.jpg');
-          if (!res.ok) return null;
-          const blob = await res.blob();
-          return await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-        } catch (e) {
-          console.warn('Logo not found or failed to load:', e);
-          return null;
-        }
-      };
-
-      // Try to load and render the logo centered at the top
-      const logoDataUrl = await loadLogoDataUrl();
-      if (logoDataUrl) {
-        // Load image to get natural dimensions for aspect ratio
-        const imgEl = await new Promise<HTMLImageElement>((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.src = logoDataUrl;
-        });
-        const maxLogoW = 40; // mm
-        const maxLogoH = 20; // mm
-        const naturalW = imgEl.naturalWidth || 1;
-        const naturalH = imgEl.naturalHeight || 1;
-        const scale = Math.min(maxLogoW / naturalW, maxLogoH / naturalH);
-        const logoW = Math.max(10, naturalW * scale); // ensure visible minimum
-        const logoH = Math.max(5, naturalH * scale);
-        const logoX = (pageWidth - logoW) / 2;
-        const logoY = currentY;
-        pdf.addImage(logoDataUrl, 'JPEG', logoX, logoY, logoW, logoH);
-        currentY = logoY + logoH + 6; // spacing below logo
-      }
-
-      // Header with logo placeholder
+      // Header
       pdf.setFontSize(24);
       pdf.setFont('helvetica', 'bold');
       pdf.text(brideName ? `${brideName}'s Wedding` : 'FRESH FACED', pageWidth / 2, currentY, { align: 'center' });
@@ -639,17 +662,17 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       const timestamp = new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString('en-GB');
       pdf.text(`Generated: ${timestamp}`, pageWidth / 2, footerY, { align: 'center' });
 
-      // Generate filename using Bride's name and current date: <Bride>_financial_summary_<YYYY-MM-DD>.pdf
+      // Filename: <Bride>_financial_summary_<YYYY-MM-DD>.pdf
       const dateStr = new Date().toISOString().split('T')[0];
       const safeBride = (brideName || 'Bride')
         .trim()
-        .replace(/\s+/g, '_')            // spaces -> underscores
-        .replace(/[^A-Za-z0-9_\-]/g, ''); // remove unsafe chars
+        .replace(/\s+/g, '_')
+        .replace(/[^A-Za-z0-9_\-]/g, '');
       const filename = `${safeBride}_financial_summary_${dateStr}.pdf`;
       pdf.save(filename);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
+      showNotice({ type: 'error', text: 'Error generating PDF. Please try again.' });
     }
   };
 
@@ -661,10 +684,10 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         'text/plain': new Blob([generatePlainTextTable()], { type: 'text/plain' })
       });
       await navigator.clipboard.write([clipboardItem]);
-      alert('Quote copied to clipboard with rich formatting!');
+      showNotice({ type: 'success', text: 'Quote copied to clipboard with rich formatting!' });
     } catch (error) {
       console.error('Error copying rich text:', error);
-      alert('Error copying to clipboard. Please try again.');
+      showNotice({ type: 'error', text: 'Error copying to clipboard. Please try again.' });
     }
   };
 
@@ -672,10 +695,10 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     try {
       const plainText = generatePlainTextTable();
       await navigator.clipboard.writeText(plainText);
-      alert('Quote copied to clipboard as plain text!');
+      showNotice({ type: 'success', text: 'Quote copied to clipboard as plain text!' });
     } catch (error) {
       console.error('Error copying plain text:', error);
-      alert('Error copying to clipboard. Please try again.');
+      showNotice({ type: 'error', text: 'Error copying to clipboard. Please try again.' });
     }
   };
 
@@ -708,6 +731,40 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       <div className="form-header">
         <h2>{brideName ? `${brideName}'s Wedding` : 'Quote Results'}</h2>
         <p className="subtitle">{brideName ? 'Financial Summary' : 'Review your quote and adjust payments as needed'}</p>
+        <div className="actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-primary" onClick={handleQuickSave} disabled={saving} aria-label="Save quote">Save</button>
+        </div>
+        {notice && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="notice-banner"
+            style={{
+              marginTop: '8px',
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid',
+              borderColor: notice.type === 'success' ? '#bbf7d0' : notice.type === 'error' ? '#fecaca' : '#bfdbfe',
+              background: notice.type === 'success' ? '#ecfdf5' : notice.type === 'error' ? '#fee2e2' : '#dbeafe',
+              color: notice.type === 'success' ? '#065f46' : notice.type === 'error' ? '#7f1d1d' : '#1e3a8a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}
+          >
+            <span>{notice.text}</span>
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="btn btn-secondary btn-small"
+              aria-label="Dismiss notification"
+              style={{ padding: '2px 8px' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="quote-results">
@@ -721,7 +778,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                 </p>
               </div>
               {onEditForm && (
-                <button 
+                <button type="button"
                   onClick={onEditForm}
                   className="btn btn-secondary edit-btn"
                   aria-label="Edit form details"
@@ -800,7 +857,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             <div className="payments-section">
               <div className="payments-header">
                 <h4>{calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling'}</h4>
-                <button 
+                <button type="button"
                   onClick={() => addPayment(index)}
                   className="btn btn-secondary btn-small"
                   aria-label="Add new payment"
@@ -889,7 +946,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                             />
                           </div>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => removePayment(index, payment.id)}
                           className="btn btn-danger btn-small payment-remove-btn"
                           aria-label="Remove payment"
@@ -949,19 +1006,19 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       </div>
 
       <div className="export-actions">
-        <button onClick={copyRichText} className="btn btn-secondary">
+        <button type="button" onClick={copyRichText} className="btn btn-secondary">
           Copy Table (Rich Text)
         </button>
-        <button onClick={copyPlainText} className="btn btn-secondary">
+        <button type="button" onClick={copyPlainText} className="btn btn-secondary">
           Copy Plain Text
         </button>
-        <button onClick={exportToPDF} className="btn btn-secondary">
+        <button type="button" onClick={exportToPDF} className="btn btn-secondary">
           Export PDF
         </button>
       </div>
 
       <div className="form-actions">
-        <button onClick={onStartOver} className="btn btn-secondary">
+        <button type="button" onClick={onStartOver} className="btn btn-secondary">
           Start Over
         </button>
       </div>

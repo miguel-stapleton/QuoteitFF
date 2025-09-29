@@ -195,65 +195,69 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
             </label>
           </div>
 
-          <div className="input-group" style={{ marginLeft: '0' }}>
-            <label htmlFor="hairTrialVenue" className="input-label">
-              Trial venue
-            </label>
-            <input
-              type="text"
-              id="hairTrialVenue"
-              className="input-field"
-              placeholder="Enter trial venue location"
-              value={hairForm.trialVenue}
-              onChange={(e) => handleGlobalFieldChange('trialVenue', e.target.value)}
-              disabled={!!(bothSelected && trialSyncEnabled)}
-              aria-disabled={bothSelected && trialSyncEnabled ? true : undefined}
-              title={bothSelected && trialSyncEnabled ? 'Mirrored from Make-up while "Hair and Make-up Trial was held simultaneously" is enabled' : undefined}
-              style={bothSelected && trialSyncEnabled ? { opacity: 0.65, pointerEvents: 'none' } : undefined}
-            />
-            {bothSelected && trialSyncEnabled && (
-              <small className="form-help" aria-live="polite">
-                Mirrored from Make-up: {makeupForm?.trialVenue && makeupForm.trialVenue.trim() ? (
-                  <strong>{makeupForm.trialVenue}</strong>
-                ) : (
-                  'not set yet in Make-up'
-                )}
-              </small>
-            )}
-            {bothSelected && (
-              <div style={{ marginTop: '0.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!trialSyncEnabled}
-                    onChange={(e) => onTrialSyncChange && onTrialSyncChange(e.target.checked)}
-                  />
-                  <span>Hair and Make-up Trial was held simultaneously</span>
+          {hairForm.trialTravelEnabled && (
+            <>
+              <div className="input-group" style={{ marginLeft: '0' }}>
+                <label htmlFor="hairTrialVenue" className="input-label">
+                  Trial venue
                 </label>
-                {trialSyncEnabled && (
-                  <small className="form-help">Editing Trial Venue here will mirror to the other service.</small>
+                <input
+                  type="text"
+                  id="hairTrialVenue"
+                  className="input-field"
+                  placeholder="Enter trial venue location"
+                  value={hairForm.trialVenue}
+                  onChange={(e) => handleGlobalFieldChange('trialVenue', e.target.value)}
+                  disabled={!!(bothSelected && trialSyncEnabled)}
+                  aria-disabled={bothSelected && trialSyncEnabled ? true : undefined}
+                  title={bothSelected && trialSyncEnabled ? 'Mirrored from Make-up while "Hair and Make-up Trial was held simultaneously" is enabled' : undefined}
+                  style={bothSelected && trialSyncEnabled ? { opacity: 0.65, pointerEvents: 'none' } : undefined}
+                />
+                {bothSelected && trialSyncEnabled && (
+                  <small className="form-help" aria-live="polite">
+                    Mirrored from Make-up: {makeupForm?.trialVenue && makeupForm.trialVenue.trim() ? (
+                      <strong>{makeupForm.trialVenue}</strong>
+                    ) : (
+                      'not set yet in Make-up'
+                    )}
+                  </small>
+                )}
+                {bothSelected && (
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!trialSyncEnabled}
+                        onChange={(e) => onTrialSyncChange && onTrialSyncChange(e.target.checked)}
+                      />
+                      <span>Hair and Make-up Trial was held simultaneously</span>
+                    </label>
+                    {trialSyncEnabled && (
+                      <small className="form-help">Editing Trial Venue here will mirror to the other service.</small>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="input-group" style={{ marginLeft: '0' }}>
-            <label htmlFor="hairTrialTravelFee" className="input-label">
-              Trial travel fee (€)
-            </label>
-            <input
-              type="number"
-              id="hairTrialTravelFee"
-              className="input-field"
-              placeholder="0"
-              value={hairForm.trialTravelFee || ''}
-              onChange={(e) => handleGlobalFieldChange('trialTravelFee', Math.max(0, parseFloat(e.target.value) || 0))}
-              onBlur={(e) => handleNumberBlur('trialTravelFee', e.target.value)}
-              min="0"
-              step="0.01"
-            />
-            {renderWarning('trialTravelFee')}
-          </div>
+              <div className="input-group" style={{ marginLeft: '0' }}>
+                <label htmlFor="hairTrialTravelFee" className="input-label">
+                  Trial travel fee (€)
+                </label>
+                <input
+                  type="number"
+                  id="hairTrialTravelFee"
+                  className="input-field"
+                  placeholder="0"
+                  value={hairForm.trialTravelFee || ''}
+                  onChange={(e) => handleGlobalFieldChange('trialTravelFee', Math.max(0, parseFloat(e.target.value) || 0))}
+                  onBlur={(e) => handleNumberBlur('trialTravelFee', e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+                {renderWarning('trialTravelFee')}
+              </div>
+            </>
+          )}
         </>
       )}
 

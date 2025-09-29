@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ViewState, ServiceChoice, MultiDay, MakeupForm, HairForm } from './types';
+import { ViewState, ServiceChoice, MultiDay, MakeupForm, HairForm, DefaultPrices, GrandSummary } from './types';
 import { useTheme } from './hooks/useTheme';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -79,6 +79,31 @@ export default function App() {
     setCurrentView('form');
   };
 
+  // Provide the current app state snapshot to children
+  const getAppStateSnapshot = () => appState;
+
+  // Apply a previously saved app state (from loaded quote)
+  const applyLoadedAppState = (loaded: typeof appState) => {
+    // Apply core values
+    updateServiceChoice(loaded.serviceChoice);
+    updateMultiDay(loaded.multiDay);
+    if (loaded.makeupForm) updateMakeupForm(loaded.makeupForm);
+    if (loaded.hairForm) updateHairForm(loaded.hairForm);
+    updatePriceMode(loaded.priceMode);
+    if (loaded.customPrices) updateCustomPrices(loaded.customPrices as DefaultPrices);
+
+    // Apply calculations and summaries
+    if (Array.isArray(loaded.calculations)) updateCalculations(loaded.calculations);
+    if (loaded.grandSummary) updateGrandSummary(loaded.grandSummary as GrandSummary);
+
+    // Apply sync flags
+    updateTrialSyncEnabled(loaded.trialSyncEnabled ?? false);
+    (loaded.beautyVenueSyncEnabled || []).forEach((v, idx) => updateBeautyVenueSyncEnabled(idx, !!v));
+
+    // Navigate to result view so user can adjust and export
+    setCurrentView('result');
+  };
+
   const renderCurrentView = () => {
     switch (currentView) {
       case 'form':
@@ -98,6 +123,7 @@ export default function App() {
             beautyVenueSyncEnabled={appState.beautyVenueSyncEnabled ?? []}
             onTrialSyncChange={updateTrialSyncEnabled}
             onBeautyVenueSyncToggle={updateBeautyVenueSyncEnabled}
+            applyLoadedAppState={applyLoadedAppState}
           />
         );
       
@@ -143,6 +169,9 @@ export default function App() {
             trialSyncEnabled={appState.trialSyncEnabled}
             makeupForm={appState.makeupForm}
             hairForm={appState.hairForm}
+            getAppState={getAppStateSnapshot}
+            applyLoadedAppState={applyLoadedAppState}
+            appVersion={appState.version}
           />
         );
       

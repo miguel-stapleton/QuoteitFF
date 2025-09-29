@@ -199,60 +199,64 @@ export const MakeupServiceForm: React.FC<MakeupServiceFormProps> = ({
             </small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="makeup-trial-venue" className="form-label">
-              Trial venue
-            </label>
-            <input
-              id="makeup-trial-venue"
-              type="text"
-              value={makeupForm.trialVenue}
-              onChange={(e) => handleGlobalFieldChange('trialVenue', e.target.value)}
-              className="input-field"
-              placeholder="e.g., Hotel name or address"
-              aria-describedby="makeup-trial-venue-help"
-            />
-            <small id="makeup-trial-venue-help" className="form-help">
-              Location where trials will take place
-            </small>
-            {bothSelected && (
-              <div style={{ marginTop: '0.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!trialSyncEnabled}
-                    onChange={(e) => onTrialSyncChange && onTrialSyncChange(e.target.checked)}
-                  />
-                  <span>Hair and Make-up Trial was held simultaneously</span>
+          {makeupForm.trialTravelEnabled && (
+            <>
+              <div className="form-group">
+                <label htmlFor="makeup-trial-venue" className="form-label">
+                  Trial venue
                 </label>
-                {trialSyncEnabled && (
-                  <small className="form-help">Editing Trial Venue here will mirror to the other service.</small>
+                <input
+                  id="makeup-trial-venue"
+                  type="text"
+                  value={makeupForm.trialVenue}
+                  onChange={(e) => handleGlobalFieldChange('trialVenue', e.target.value)}
+                  className="input-field"
+                  placeholder="e.g., Hotel name or address"
+                  aria-describedby="makeup-trial-venue-help"
+                />
+                <small id="makeup-trial-venue-help" className="form-help">
+                  Location where trials will take place
+                </small>
+                {bothSelected && (
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!trialSyncEnabled}
+                        onChange={(e) => onTrialSyncChange && onTrialSyncChange(e.target.checked)}
+                      />
+                      <span>Hair and Make-up Trial was held simultaneously</span>
+                    </label>
+                    {trialSyncEnabled && (
+                      <small className="form-help">Editing Trial Venue here will mirror to the other service.</small>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="makeup-trial-fee" className="form-label">
-              Trial travel fee (€)
-            </label>
-            <input
-              id="makeup-trial-fee"
-              type="number"
-              min="0"
-              step="0.01"
-              value={makeupForm.trialTravelFee || ''}
-              onChange={(e) => handleGlobalFieldChange('trialTravelFee', parseFloat(e.target.value) || 0)}
-              onBlur={(e) => handleNumberBlur('trialTravelFee', e.target.value)}
-              className="input-field number-input"
-              placeholder="0.00"
-              aria-describedby="makeup-trial-fee-help"
-            />
-            <small id="makeup-trial-fee-help" className="form-help">
-              Additional fee for traveling to trial location
-            </small>
-            {renderWarning('trialTravelFee')}
-          </div>
+              <div className="form-group">
+                <label htmlFor="makeup-trial-fee" className="form-label">
+                  Trial travel fee (€)
+                </label>
+                <input
+                  id="makeup-trial-fee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={makeupForm.trialTravelFee || ''}
+                  onChange={(e) => handleGlobalFieldChange('trialTravelFee', parseFloat(e.target.value) || 0)}
+                  onBlur={(e) => handleNumberBlur('trialTravelFee', e.target.value)}
+                  className="input-field number-input"
+                  placeholder="0.00"
+                  aria-describedby="makeup-trial-fee-help"
+                />
+                <small id="makeup-trial-fee-help" className="form-help">
+                  Additional fee for traveling to trial location
+                </small>
+                {renderWarning('trialTravelFee')}
+              </div>
+            </>
+          )}
         </>
       )}
 
