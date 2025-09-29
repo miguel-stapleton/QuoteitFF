@@ -50,7 +50,7 @@ export const makeupArtistPrices: Record<MakeupArtist, ServicePricing> = {
     touchupHourly: 50,
     exclusivityFee: 100
   },
-  [MakeupArtist.Ines]: {
+  [MakeupArtist.Inês]: {
     trialUnit: 150,
     bridalUnit: 300,
     guestUnit: 75,
