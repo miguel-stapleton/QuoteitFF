@@ -216,7 +216,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           ${globalHTML}
           ${perDayHTML}
           <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
-            <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">PAYMENTS:</h4>
+            <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">${calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling'}</h4>
             ${paymentsHTML}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 2px solid #e5e7eb;">
               <span style="font-weight: 700; color: #dc2626;">DUE:</span>
@@ -321,8 +321,16 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         content += formatLine('SERVICE', 'CALCULATION', 'TOTAL') + '\n';
         content += lineSeparator + '\n';
         globalLines.forEach(line => {
-          const label = line.meta ? `${line.label} (${line.meta})` : line.label;
-          const calculation = line.qty && line.unit ? `${line.qty} × €${line.unit.toFixed(2)}` : '';
+          // If trial sync is enabled, force Trial venue meta into the Trial travel fee label for both services
+          let effectiveMeta = line.meta || '';
+          if (trialSyncEnabled && line.label.toLowerCase().startsWith('trial travel fee')) {
+            const thisVenue = (calc.serviceType === 'makeup') ? (makeupForm?.trialVenue || '') : (hairForm?.trialVenue || '');
+            const otherVenue = (calc.serviceType === 'makeup') ? (hairForm?.trialVenue || '') : (makeupForm?.trialVenue || '');
+            const venue = (thisVenue || otherVenue || '').trim();
+            if (venue) effectiveMeta = venue;
+          }
+          const label = effectiveMeta ? `${line.label} (${effectiveMeta})` : line.label;
+          const calculation = line.qty && line.unit ? `${line.qty} x €${line.unit.toFixed(2)}` : '';
           content += formatLine(label, calculation, `€${line.total.toFixed(2)}`) + '\n';
         });
         content += lineSeparator + '\n\n';
@@ -342,7 +350,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         content += formatLine('SUBTOTAL', '', `€${day.subtotal.toFixed(2)}`) + '\n\n';
       });
 
-      content += 'PAYMENTS:\n';
+      content += `${calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling'}\n`;
       if (calc.payments.length > 0) {
         calc.payments.forEach(payment => {
           const paymentLabel = `${formatDateForDisplay(payment.date)}: ${payment.occasion || 'Payment'}`;
@@ -556,7 +564,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         // Payments section
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('PAYMENTS:', margin, currentY);
+        pdf.text(calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling', margin, currentY);
         currentY += 6;
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
@@ -631,9 +639,13 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       const timestamp = new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString('en-GB');
       pdf.text(`Generated: ${timestamp}`, pageWidth / 2, footerY, { align: 'center' });
 
-      // Generate filename with current date
+      // Generate filename using Bride's name and current date: <Bride>_financial_summary_<YYYY-MM-DD>.pdf
       const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `fresh-faced-quote-${dateStr}.pdf`;
+      const safeBride = (brideName || 'Bride')
+        .trim()
+        .replace(/\s+/g, '_')            // spaces -> underscores
+        .replace(/[^A-Za-z0-9_\-]/g, ''); // remove unsafe chars
+      const filename = `${safeBride}_financial_summary_${dateStr}.pdf`;
       pdf.save(filename);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -787,7 +799,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
             <div className="payments-section">
               <div className="payments-header">
-                <h4>Payments</h4>
+                <h4>{calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling'}</h4>
                 <button 
                   onClick={() => addPayment(index)}
                   className="btn btn-secondary btn-small"
@@ -817,14 +829,50 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                         </div>
                         <div className="payment-field">
                           <label htmlFor={`occasion-${payment.id}`} className="payment-field-label">Occasion</label>
-                          <input
-                            id={`occasion-${payment.id}`}
-                            type="text"
-                            value={payment.occasion}
-                            onChange={(e) => updatePayment(index, payment.id, 'occasion', e.target.value)}
-                            placeholder="e.g., Make-up trial"
-                            className="payment-occasion-input"
-                          />
+                          {(() => {
+                            const predefinedOptions = calc.serviceType === 'makeup'
+                              ? ['Main MUA Deposit(s)', 'Assistant MUA Deposit(s)', 'Make-up Trial', 'Other']
+                              : ['Main HS Deposit(s)', 'Assistant HS Deposit(s)', 'Hairstyling Trial', 'Other'];
+                            const isPredefined = predefinedOptions.includes(payment.occasion);
+                            const selectValue = isPredefined ? payment.occasion : 'Other';
+                            return (
+                              <>
+                                <select
+                                  id={`occasion-${payment.id}`}
+                                  className="input-field select-field"
+                                  value={selectValue}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === 'Other') {
+                                      // Keep current custom text in payment.occasion; if empty, set to ''
+                                      updatePayment(index, payment.id, 'occasion', isPredefined ? '' : payment.occasion || '');
+                                    } else {
+                                      updatePayment(index, payment.id, 'occasion', val);
+                                    }
+                                  }}
+                                  aria-describedby={`occasion-help-${payment.id}`}
+                                >
+                                  {predefinedOptions.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                                <small id={`occasion-help-${payment.id}`} className="form-help">
+                                  Choose a standard occasion or select Other to type a custom one.
+                                </small>
+                                {selectValue === 'Other' && (
+                                  <input
+                                    type="text"
+                                    className="payment-occasion-input"
+                                    placeholder={calc.serviceType === 'makeup' ? 'e.g., Make-up trial' : 'e.g., Hairstyling trial'}
+                                    value={isPredefined ? '' : (payment.occasion || '')}
+                                    onChange={(e) => updatePayment(index, payment.id, 'occasion', e.target.value)}
+                                    style={{ marginTop: '0.25rem' }}
+                                    aria-label="Custom occasion"
+                                  />
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                         <div className="payment-field">
                           <label htmlFor={`amount-${payment.id}`} className="payment-field-label">Amount</label>

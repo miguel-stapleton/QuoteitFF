@@ -206,7 +206,20 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
               placeholder="Enter trial venue location"
               value={hairForm.trialVenue}
               onChange={(e) => handleGlobalFieldChange('trialVenue', e.target.value)}
+              disabled={!!(bothSelected && trialSyncEnabled)}
+              aria-disabled={bothSelected && trialSyncEnabled ? true : undefined}
+              title={bothSelected && trialSyncEnabled ? 'Mirrored from Make-up while "Hair and Make-up Trial was held simultaneously" is enabled' : undefined}
+              style={bothSelected && trialSyncEnabled ? { opacity: 0.65, pointerEvents: 'none' } : undefined}
             />
+            {bothSelected && trialSyncEnabled && (
+              <small className="form-help" aria-live="polite">
+                Mirrored from Make-up: {makeupForm?.trialVenue && makeupForm.trialVenue.trim() ? (
+                  <strong>{makeupForm.trialVenue}</strong>
+                ) : (
+                  'not set yet in Make-up'
+                )}
+              </small>
+            )}
             {bothSelected && (
               <div style={{ marginTop: '0.25rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -304,7 +317,20 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                 placeholder="e.g., Hotel Cascais"
                 value={day.beautyVenue || ''}
                 onChange={(e) => onBeautyVenueChange(e.target.value)}
+                disabled={!!(bothSelected && beautyVenueSyncEnabled[idx])}
+                aria-disabled={bothSelected && beautyVenueSyncEnabled[idx] ? true : undefined}
+                title={bothSelected && beautyVenueSyncEnabled[idx] ? 'Mirrored from Make-up while "Same location for both services" is enabled' : undefined}
+                style={bothSelected && beautyVenueSyncEnabled[idx] ? { opacity: 0.65, pointerEvents: 'none' } : undefined}
               />
+              {bothSelected && beautyVenueSyncEnabled[idx] && (
+                <small className="form-help" aria-live="polite">
+                  Mirrored from Make-up: {makeupForm?.perDay?.[idx]?.beautyVenue ? (
+                    <strong>{makeupForm.perDay[idx].beautyVenue}</strong>
+                  ) : (
+                    'not set yet in Make-up'
+                  )}
+                </small>
+              )}
               {bothSelected && (
                 <div style={{ marginTop: '0.25rem' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

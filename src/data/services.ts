@@ -1,4 +1,4 @@
-import { DefaultPrices, MakeupArtist, HairArtist, MakeupDayDetails, HairDayDetails } from '../types';
+import { DefaultPrices, MakeupArtist, HairArtist, MakeupDayDetails, HairDayDetails, ServicePricing } from '../types';
 
 export const defaultPrices: DefaultPrices = {
   makeup: {
@@ -18,6 +18,100 @@ export const defaultPrices: DefaultPrices = {
     scheduledReturnGuestUnit: 35,
     touchupHourly: 45,
     exclusivityFee: 150
+  }
+};
+
+// New: Per-makeup-artist default pricing
+export const makeupArtistPrices: Record<MakeupArtist, ServicePricing> = {
+  [MakeupArtist.Lola]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist.Teresa]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist.Miguel]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist['Inês']]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist.Sofia]: {
+    trialUnit: 100,
+    bridalUnit: 200,
+    guestUnit: 75,
+    scheduledReturnBride: 100,
+    scheduledReturnGuestUnit: 50,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist.Rita]: {
+    trialUnit: 100,
+    bridalUnit: 200,
+    guestUnit: 75,
+    scheduledReturnBride: 100,
+    scheduledReturnGuestUnit: 50,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist.Filipa]: {
+    trialUnit: 100,
+    bridalUnit: 200,
+    guestUnit: 75,
+    scheduledReturnBride: 100,
+    scheduledReturnGuestUnit: 50,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist['Ana Neves']]: {
+    trialUnit: 125,
+    bridalUnit: 250,
+    guestUnit: 75,
+    scheduledReturnBride: 125,
+    scheduledReturnGuestUnit: 55,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist['Ana Roma']]: {
+    trialUnit: 125,
+    bridalUnit: 250,
+    guestUnit: 75,
+    scheduledReturnBride: 125,
+    scheduledReturnGuestUnit: 55,
+    touchupHourly: 50,
+    exclusivityFee: 100
+  },
+  [MakeupArtist.Sara]: {
+    trialUnit: 125,
+    bridalUnit: 250,
+    guestUnit: 75,
+    scheduledReturnBride: 125,
+    scheduledReturnGuestUnit: 55,
+    touchupHourly: 50,
+    exclusivityFee: 100
   }
 };
 
@@ -73,3 +167,70 @@ export const defaultHairForm = {
 // Helpers to seed per-day arrays for N days
 export const seedMakeupDays = (count: number) => Array.from({ length: count }, () => ({ ...defaultMakeupDay }));
 export const seedHairDays = (count: number) => Array.from({ length: count }, () => ({ ...defaultHairDay }));
+
+// New: Per-hair-artist default pricing
+export const hairArtistPrices: Record<HairArtist, ServicePricing> = {
+  [HairArtist['Lília']]: {
+    trialUnit: 150,
+    bridalUnit: 320,
+    guestUnit: 95,
+    scheduledReturnBride: 250,
+    scheduledReturnGuestUnit: 95,
+    touchupHourly: 90,
+    exclusivityFee: 100
+  },
+  [HairArtist.Andreia]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 90,
+    scheduledReturnBride: 200,
+    scheduledReturnGuestUnit: 70,
+    touchupHourly: 70,
+    exclusivityFee: 100
+  },
+  [HairArtist.Eric]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 60,
+    exclusivityFee: 100
+  },
+  [HairArtist.Oksana]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 60,
+    exclusivityFee: 100
+  },
+  [HairArtist.OlgaH]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 60,
+    exclusivityFee: 100
+  },
+  [HairArtist.Joana]: {
+    trialUnit: 150,
+    bridalUnit: 300,
+    guestUnit: 75,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 60,
+    exclusivityFee: 100
+  },
+  [HairArtist.Agne]: {
+    trialUnit: 175,
+    bridalUnit: 1050,
+    guestUnit: 100,
+    scheduledReturnBride: 150,
+    scheduledReturnGuestUnit: 60,
+    touchupHourly: 60,
+    exclusivityFee: 100
+  }
+};

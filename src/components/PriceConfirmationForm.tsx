@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ServiceChoice, PriceMode, DefaultPrices, MultiDay, MakeupForm, HairForm } from '../types';
 import { calculateQuote } from '../utils/quoteCalculator';
+import { makeupArtistPrices, hairArtistPrices } from '../data/services';
+import { useMemo } from 'react';
 
 interface PriceConfirmationFormProps {
   serviceChoice: ServiceChoice;
@@ -30,17 +32,36 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
   onConfirm
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+
+  // Derive artist-specific default prices for makeup/hair when available
+  const derivedDefaultPrices: DefaultPrices = useMemo(() => {
+    let result = { ...defaultPrices };
+    if (serviceChoice.makeup && makeupForm?.artist) {
+      const artistDefault = makeupArtistPrices[makeupForm.artist];
+      if (artistDefault) {
+        result = { ...result, makeup: artistDefault };
+      }
+    }
+    if (serviceChoice.hair && hairForm?.artist) {
+      const artistDefaultH = hairArtistPrices[hairForm.artist];
+      if (artistDefaultH) {
+        result = { ...result, hair: artistDefaultH };
+      }
+    }
+    return result;
+  }, [serviceChoice.makeup, serviceChoice.hair, makeupForm?.artist, hairForm?.artist, defaultPrices]);
+
   const [editingPrices, setEditingPrices] = useState<DefaultPrices>(
-    customPrices || defaultPrices
+    customPrices || derivedDefaultPrices
   );
 
-  const currentPrices = priceMode === 'custom' && customPrices ? customPrices : defaultPrices;
+  const currentPrices = priceMode === 'custom' && customPrices ? customPrices : derivedDefaultPrices;
 
   const handleEditPrices = () => {
     setIsEditing(true);
     onPriceModeChange('custom');
-    setEditingPrices(customPrices || defaultPrices);
-    updateCalculations('custom', customPrices || defaultPrices);
+    setEditingPrices(customPrices || derivedDefaultPrices);
+    updateCalculations('custom', customPrices || derivedDefaultPrices);
   };
 
   const handleSaveCustomPrices = () => {
@@ -50,11 +71,11 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
   };
 
   const handleResetToDefault = () => {
-    setEditingPrices(defaultPrices);
-    onCustomPricesChange(defaultPrices);
+    setEditingPrices(derivedDefaultPrices);
+    onCustomPricesChange(derivedDefaultPrices);
     onPriceModeChange('default');
     setIsEditing(false);
-    updateCalculations('default', defaultPrices);
+    updateCalculations('default', derivedDefaultPrices);
   };
 
   const updateCalculations = (_mode: PriceMode, prices: DefaultPrices) => {
