@@ -21,15 +21,33 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
+  
+  console.log(`API ${options?.method || 'GET'} ${baseUrl}${path} - Status: ${res.status}`);
+  
   if (!res.ok) {
     let errBody: any = null;
     try { errBody = await res.json(); } catch {}
+    console.error(`API Error: ${res.status}`, errBody);
     const error: any = new Error(errBody?.message || `HTTP ${res.status}`);
     error.status = res.status;
     error.body = errBody;
     throw error;
   }
-  try { return await res.json(); } catch { return undefined as unknown as T; }
+  
+  // Handle empty responses (like 204 No Content)
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    return undefined as unknown as T;
+  }
+  
+  try { 
+    const data = await res.json();
+    console.log(`API Response:`, data);
+    return data;
+  } catch (parseError) {
+    console.error('Failed to parse JSON response:', parseError);
+    console.error('Response text:', await res.text());
+    throw new Error('Invalid JSON response from server');
+  }
 }
 
 export const QuotesAPI = {

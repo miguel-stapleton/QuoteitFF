@@ -66,12 +66,21 @@ export const MainForm: React.FC<MainFormProps> = ({
   const loadQuoteById = async (id: string) => {
     try {
       setLoadError(null);
+      console.log('Loading quote with ID:', id);
+      
       const full = await QuotesAPI.get(id);
       
       console.log('Loaded quote data:', full);
       
+      // Check if the quote has valid data
+      if (!full) {
+        console.error('API returned undefined/null for quote ID:', id);
+        setLoadError('Failed to retrieve the quote data. The quote may not exist or there may be a server issue.');
+        return;
+      }
+      
       // Check if the quote has valid appState data
-      if (!full || !full.appState) {
+      if (!full.appState) {
         console.error('Quote missing appState:', full);
         setLoadError('The selected quote appears to be corrupted or incomplete. Please try a different quote.');
         return;
@@ -82,7 +91,8 @@ export const MainForm: React.FC<MainFormProps> = ({
       setLoadError(null);
     } catch (error) {
       console.error('Failed to load quote:', error);
-      setLoadError('Failed to load the selected schedule. Please try again or contact support if the issue persists.');
+      const errorMessage = (error as any)?.message || 'Unknown error';
+      setLoadError(`Failed to load the selected schedule: ${errorMessage}. Please try again or contact support if the issue persists.`);
     }
   };
 
