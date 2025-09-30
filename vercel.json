@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/quotes/[id].ts": {
-      "methods": ["GET", "PUT", "DELETE"]
-    },
-    "api/quotes/index.ts": {
-      "methods": ["GET", "POST"]
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",

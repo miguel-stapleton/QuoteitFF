@@ -599,7 +599,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(11);
-          pdf.text(formatDateWithVenue(day.date, day.venue), margin, currentY);
+          pdf.text(formatDateWithVenue(day.date), margin, currentY);
           currentY += 6;
           pdf.setFontSize(9);
           pdf.text('SERVICE', colLabelX, currentY);
@@ -738,7 +738,22 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   };
 
   useEffect(() => {
-    setLocalCalculations(calculations);
+    // Preserve existing payments when calculations are updated from navigation
+    const updatedCalculations = calculations.map((newCalc, index) => {
+      const existingCalc = localCalculations[index];
+      if (existingCalc && existingCalc.artistName === newCalc.artistName && existingCalc.serviceType === newCalc.serviceType) {
+        // Preserve payments and recalculate totals
+        const totalPaid = existingCalc.payments.reduce((sum, payment) => sum + payment.amount, 0);
+        return {
+          ...newCalc,
+          payments: existingCalc.payments,
+          totalPaid,
+          due: Math.max(0, newCalc.subtotal - totalPaid)
+        };
+      }
+      return newCalc;
+    });
+    setLocalCalculations(updatedCalculations);
   }, [calculations]);
 
   const renderPerDayTotalsCard = () => {
