@@ -725,6 +725,46 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     );
   };
 
+  // Local browser storage helpers (backend-free)
+  type SavedItem = { id: string; title: string; updatedAt: string; appState: any };
+  const STORAGE_KEY = 'ffq_saved_quotes_v1';
+  const readLocalSaves = (): SavedItem[] => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  };
+  const writeLocalSaves = (items: SavedItem[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  };
+
+  const handleSaveToBrowser = () => {
+    if (!getAppState) {
+      showNotice({ type: 'error', text: 'Saving is unavailable in this context.' });
+      return;
+    }
+    const dateStr = new Date().toISOString().split('T')[0];
+    const title = (brideName && brideName.trim()) ? `${brideName} — ${dateStr}` : `Quote — ${dateStr}`;
+    const state = getAppState();
+    const items = readLocalSaves();
+    const existingIdx = items.findIndex(i => i.title === title);
+    const now = new Date().toISOString();
+    const payload: SavedItem = {
+      id: existingIdx >= 0 ? items[existingIdx].id : `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      title,
+      updatedAt: now,
+      appState: state,
+    };
+    if (existingIdx >= 0) {
+      items[existingIdx] = payload;
+      writeLocalSaves(items);
+      showNotice({ type: 'success', text: 'Saved to this browser (overwritten existing).' });
+    } else {
+      writeLocalSaves([payload, ...items]);
+      showNotice({ type: 'success', text: 'Saved to this browser.' });
+    }
+  };
+
   return (
     <div className="quote-result-form">
       <div className="form-header">
@@ -732,6 +772,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         <p className="subtitle">{brideName ? 'Financial Summary' : 'Review your quote and adjust payments as needed'}</p>
         <div className="actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-primary" onClick={handleQuickSave} disabled={saving} aria-label="Save quote">Save</button>
+          <button type="button" className="btn btn-secondary" onClick={handleSaveToBrowser} aria-label="Save to this browser">Save to this browser</button>
         </div>
         {notice && (
           <div

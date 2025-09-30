@@ -10,7 +10,11 @@ export interface QuotePayload {
   version?: string;
 }
 
-const baseUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000';
+// Resolve base URL safely:
+// - undefined => dev fallback to localhost
+// - '' (empty string) => Vercel API routes (/api)
+const envUrl = (import.meta as any).env?.VITE_API_URL;
+const baseUrl = envUrl === undefined ? 'http://localhost:4000' : (envUrl || '/api');
 
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${baseUrl}${path}`, {
