@@ -17,8 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const collection = db.collection('quotes');
 
     if (req.method === 'GET') {
+      console.log('GET quote by ID:', id);
       const quote = await collection.findOne({ _id: new ObjectId(id) });
+      console.log('Found quote:', quote ? 'yes' : 'no');
       if (!quote) {
+        console.log('Quote not found for ID:', id);
         return res.status(404).json({ error: 'Not found' });
       }
       return res.json(quote);

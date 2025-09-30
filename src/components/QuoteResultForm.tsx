@@ -512,20 +512,42 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       };
 
       // Header
-      // Logo placeholder
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('FRESH FACED LOGO', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 10;
+      try {
+        // Load and embed the actual logo
+        const logoImg = new Image();
+        logoImg.crossOrigin = 'anonymous';
+        await new Promise((resolve, reject) => {
+          logoImg.onload = resolve;
+          logoImg.onerror = reject;
+          logoImg.src = '/logo.jpg';
+        });
+        
+        // Calculate logo dimensions (maintain aspect ratio, max width 60mm)
+        const maxLogoWidth = 60;
+        const aspectRatio = logoImg.height / logoImg.width;
+        const logoWidth = Math.min(maxLogoWidth, logoImg.width * 0.264583); // px to mm
+        const logoHeight = logoWidth * aspectRatio;
+        
+        // Center the logo
+        const logoX = (pageWidth - logoWidth) / 2;
+        pdf.addImage(logoImg, 'JPEG', logoX, currentY, logoWidth, logoHeight);
+        currentY += logoHeight + 5;
+      } catch (error) {
+        console.warn('Failed to load logo, using text fallback:', error);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('FRESH FACED', pageWidth / 2, currentY, { align: 'center' });
+        currentY += 10;
+      }
 
-      pdf.setFontSize(24);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(brideName ? `${brideName}'s Wedding` : 'FRESH FACED', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 8;
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(brideName ? 'Financial Summary' : 'Professional Makeup & Hair Services', pageWidth / 2, currentY, { align: 'center' });
-      currentY += 15;
+       pdf.setFontSize(24);
+       pdf.setFont('helvetica', 'bold');
+       pdf.text(brideName ? `${brideName}'s Wedding` : 'FRESH FACED', pageWidth / 2, currentY, { align: 'center' });
+       currentY += 8;
+       pdf.setFontSize(12);
+       pdf.setFont('helvetica', 'normal');
+       pdf.text(brideName ? 'Financial Summary' : 'Professional Makeup & Hair Services', pageWidth / 2, currentY, { align: 'center' });
+       currentY += 15;
 
       localCalculations.forEach((calc, calcIndex) => {
         if (currentY > pageHeight - 60) {
