@@ -50,15 +50,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         { returnDocument: 'after' }
       );
 
-      if (!result.value) {
+      if (!result) {
         return res.status(404).json({ error: 'Not found' });
       }
-      return res.json(result.value);
+      return res.json(result);
     }
 
     if (req.method === 'DELETE') {
-      const result = await collection.findOneAndDelete({ _id: new ObjectId(id) });
-      if (!result.value) {
+      const result = await collection.deleteOne({ _id: new ObjectId(id) });
+      if (result.deletedCount === 0) {
         return res.status(404).json({ error: 'Not found' });
       }
       return res.status(204).send('');

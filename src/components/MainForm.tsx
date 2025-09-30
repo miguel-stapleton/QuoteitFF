@@ -65,12 +65,17 @@ export const MainForm: React.FC<MainFormProps> = ({
 
   const loadQuoteById = async (id: string) => {
     try {
+      setLoadError(null);
       const full = await QuotesAPI.get(id);
+      if (!full || !full.appState) {
+        throw new Error('Quote data is incomplete or corrupted');
+      }
       applyLoadedAppState && applyLoadedAppState(full.appState);
       setShowLoadModal(false);
-    } catch (e) {
-      console.error(e);
-      setLoadError('Failed to load the selected schedule.');
+      setLoadError(null);
+    } catch (error) {
+      console.error('Failed to load quote:', error);
+      setLoadError('Failed to load the selected schedule. Please try again or contact support if the issue persists.');
     }
   };
 

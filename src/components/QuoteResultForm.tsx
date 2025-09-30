@@ -36,6 +36,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   const [localCalculations, setLocalCalculations] = useState<CalculationResult[]>(calculations);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<null | { type: 'success' | 'error' | 'info'; text: string }>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
   const showNotice = (n: { type: 'success' | 'error' | 'info'; text: string }, timeoutMs = 3500) => {
     setNotice(n);
     if (timeoutMs > 0) {
@@ -47,15 +49,21 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     return `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  // Single-button quick save: uses automatic title; overwrites on duplicate
-  const handleQuickSave = async () => {
+  const handleSaveClick = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const defaultTitle = (brideName && brideName.trim()) ? `${brideName} — ${dateStr}` : `Quote — ${dateStr}`;
+    setCustomTitle(defaultTitle);
+    setShowSaveModal(true);
+  };
+
+  const handleConfirmSave = async () => {
     if (!getAppState) {
       showNotice({ type: 'error', text: 'Saving is unavailable in this context.' });
       return;
     }
-    const dateStr = new Date().toISOString().split('T')[0];
-    const title = (brideName && brideName.trim()) ? `${brideName} — ${dateStr}` : `Quote — ${dateStr}`;
+    const title = customTitle.trim() || 'Untitled Quote';
     const payload = { title, appState: getAppState(), version: appVersion };
+    setShowSaveModal(false);
     setSaving(true);
     try {
       await QuotesAPI.create(payload);
@@ -78,7 +86,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             await QuotesAPI.update(existingId, { title, appState: payload.appState, version: appVersion });
             showNotice({ type: 'success', text: 'Existing quote overwritten successfully.' });
           } else {
-            showNotice({ type: 'error', text: 'A quote with this title already exists, but it could not be found for overwrite. Please try a different day or rename.' });
+            showNotice({ type: 'error', text: 'A quote with this title already exists, but it could not be found for overwrite. Please try a different title.' });
           }
         } catch (err) {
           console.error(err);
@@ -399,7 +407,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
       // Per-day breakdowns
       (calc.dayBreakdowns || []).forEach(day => {
-        content += `${formatDateWithVenue(day.date, day.venue)}\n`;
+        content += `${formatDateWithVenue(day.date)}\n`;
         content += formatLine('SERVICE', 'CALCULATION', 'TOTAL') + '\n';
         content += lineSeparator + '\n';
         day.lines.forEach(line => {
@@ -504,6 +512,12 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       };
 
       // Header
+      // Logo placeholder
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('FRESH FACED LOGO', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 10;
+
       pdf.setFontSize(24);
       pdf.setFont('helvetica', 'bold');
       pdf.text(brideName ? `${brideName}'s Wedding` : 'FRESH FACED', pageWidth / 2, currentY, { align: 'center' });
@@ -771,9 +785,77 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         <h2>{brideName ? `${brideName}'s Wedding` : 'Quote Results'}</h2>
         <p className="subtitle">{brideName ? 'Financial Summary' : 'Review your quote and adjust payments as needed'}</p>
         <div className="actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-primary" onClick={handleQuickSave} disabled={saving} aria-label="Save quote">Save</button>
+          <button type="button" className="btn btn-primary" onClick={handleSaveClick} disabled={saving} aria-label="Save quote">Save</button>
           <button type="button" className="btn btn-secondary" onClick={handleSaveToBrowser} aria-label="Save to this browser">Save to this browser</button>
         </div>
+        {showSaveModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+            onClick={(e) => e.target === e.currentTarget && setShowSaveModal(false)}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                padding: '24px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                minWidth: '400px',
+                maxWidth: '90vw'
+              }}
+            >
+              <h3 style={{ margin: '0 0 16px 0' }}>Save Quote</h3>
+              <label htmlFor="quote-title" style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                Title:
+              </label>
+              <input
+                id="quote-title"
+                type="text"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  fontSize: '16px',
+                  marginBottom: '16px'
+                }}
+                placeholder="Enter a title for your quote"
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSaveModal(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSave}
+                  className="btn btn-primary"
+                  disabled={saving || !customTitle.trim()}
+                  style={{ padding: '8px 16px' }}
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {notice && (
           <div
             role="status"
