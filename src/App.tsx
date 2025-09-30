@@ -137,6 +137,7 @@ export default function App() {
             priceMode={appState.priceMode}
             defaultPrices={appState.defaultPrices}
             customPrices={appState.customPrices}
+            existingCalculations={appState.calculations}
             onPriceModeChange={updatePriceMode}
             onCustomPricesChange={updateCustomPrices}
             onCalculationsUpdate={(calculations, grandSummary) => {

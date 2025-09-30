@@ -15,23 +15,26 @@ interface CalculationInput {
   hairForm?: HairForm;
   prices: DefaultPrices;
   weddingDates: string[];
+  existingCalculations?: CalculationResult[];
 }
 
-export function calculateQuote(input: CalculationInput): {
+export function calculateQuote(params: CalculationInput): {
   calculations: CalculationResult[];
   grandSummary: GrandSummary;
 } {
-  const calculations: CalculationResult[] = [];
+  const { serviceChoice, makeupForm, hairForm, prices, weddingDates, existingCalculations } = params;
+
+  const calculations: CalculationResult[] = existingCalculations || [];
 
   // Calculate makeup if selected
-  if (input.serviceChoice.makeup && input.makeupForm) {
-    const makeupResult = calculateMakeupService(input.makeupForm, input.prices, input.weddingDates);
+  if (serviceChoice.makeup && makeupForm) {
+    const makeupResult = calculateMakeupService(makeupForm, prices, weddingDates);
     calculations.push(makeupResult);
   }
 
   // Calculate hair if selected
-  if (input.serviceChoice.hair && input.hairForm) {
-    const hairResult = calculateHairService(input.hairForm, input.prices, input.weddingDates);
+  if (serviceChoice.hair && hairForm) {
+    const hairResult = calculateHairService(hairForm, prices, weddingDates);
     calculations.push(hairResult);
   }
 

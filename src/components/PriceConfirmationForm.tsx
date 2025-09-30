@@ -16,6 +16,7 @@ interface PriceConfirmationFormProps {
   onCustomPricesChange: (prices: DefaultPrices) => void;
   onCalculationsUpdate: (calculations: any, grandSummary: any) => void;
   onConfirm: () => void;
+  existingCalculations?: any[]; // Add existing calculations to preserve payments
 }
 
 export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
@@ -29,7 +30,8 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
   onPriceModeChange,
   onCustomPricesChange,
   onCalculationsUpdate,
-  onConfirm
+  onConfirm,
+  existingCalculations
 }) => {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -86,7 +88,8 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
       makeupForm,
       hairForm,
       prices,
-      weddingDates
+      weddingDates,
+      existingCalculations // Add existing calculations to preserve payments
     });
 
     onCalculationsUpdate(calculationResult.calculations, calculationResult.grandSummary);
@@ -101,7 +104,8 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
       makeupForm,
       hairForm,
       prices: currentPrices,
-      weddingDates
+      weddingDates,
+      existingCalculations // Add existing calculations to preserve payments
     });
 
     // Update calculations in app state
