@@ -26,7 +26,7 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
   
   if (!res.ok) {
     let errBody: any = null;
-    try { errBody = await res.json(); } catch {}
+    try { errBody = await res.clone().json(); } catch {}
     console.error(`API Error: ${res.status}`, errBody);
     const error: any = new Error(errBody?.message || `HTTP ${res.status}`);
     error.status = res.status;
@@ -39,13 +39,24 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     return undefined as unknown as T;
   }
   
+  // Clone response to read it multiple times if needed
+  const contentType = res.headers.get('content-type');
+  console.log('Content-Type:', contentType);
+  
+  // Check if response is HTML instead of JSON
+  if (contentType?.includes('text/html')) {
+    const text = await res.clone().text();
+    console.error('API returned HTML instead of JSON:', text.substring(0, 200));
+    throw new Error('API returned HTML instead of JSON. This may be a routing issue.');
+  }
+  
   try { 
-    const data = await res.json();
+    const data = await res.clone().json();
     console.log(`API Response:`, data);
     return data;
   } catch (parseError) {
     console.error('Failed to parse JSON response:', parseError);
-    console.error('Response text:', await res.text());
+    console.error('Response text:', await res.clone().text());
     throw new Error('Invalid JSON response from server');
   }
 }
