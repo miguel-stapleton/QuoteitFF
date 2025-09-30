@@ -72,28 +72,33 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       // If duplicate, auto-overwrite existing
       if (e?.status === 409) {
         try {
-          const existingId = e?.body?.id || (await (async () => {
-            try {
-              const list = await QuotesAPI.list();
-              const match = list.find(q => q.title === title);
-              return match?._id;
-            } catch (err) {
-              console.error('Failed to list quotes for overwrite fallback', err);
-              return undefined;
-            }
-          })());
+          const existingId = e?.body?.id;
           if (existingId) {
+            // Use the ID from the error response
             await QuotesAPI.update(existingId, { title, appState: payload.appState, version: appVersion });
             showNotice({ type: 'success', text: 'Existing quote overwritten successfully.' });
           } else {
-            showNotice({ type: 'error', text: 'A quote with this title already exists, but it could not be found for overwrite. Please try a different title.' });
+            // Fallback: search for the quote by title
+            try {
+              const list = await QuotesAPI.list();
+              const match = list.find(q => q.title === title);
+              if (match?._id) {
+                await QuotesAPI.update(match._id, { title, appState: payload.appState, version: appVersion });
+                showNotice({ type: 'success', text: 'Existing quote overwritten successfully.' });
+              } else {
+                showNotice({ type: 'error', text: 'A quote with this title already exists, but it could not be found for overwrite. Please try a different title.' });
+              }
+            } catch (listErr) {
+              console.error('Failed to list quotes for overwrite fallback', listErr);
+              showNotice({ type: 'error', text: 'Failed to overwrite existing quote. Please try a different title.' });
+            }
           }
-        } catch (err) {
-          console.error(err);
-          showNotice({ type: 'error', text: 'Failed to overwrite existing quote.' });
+        } catch (updateErr) {
+          console.error('Failed to update existing quote:', updateErr);
+          showNotice({ type: 'error', text: 'Failed to overwrite existing quote. Please try a different title.' });
         }
       } else {
-        console.error(e);
+        console.error('Save error:', e);
         showNotice({ type: 'error', text: 'Failed to save quote. Ensure the backend is running and your IP is allowed in MongoDB Atlas.' });
       }
     } finally {
