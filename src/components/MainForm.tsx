@@ -67,9 +67,6 @@ export const MainForm: React.FC<MainFormProps> = ({
     try {
       setLoadError(null);
       const full = await QuotesAPI.get(id);
-      if (!full || !full.appState) {
-        throw new Error('Quote data is incomplete or corrupted');
-      }
       applyLoadedAppState && applyLoadedAppState(full.appState);
       setShowLoadModal(false);
       setLoadError(null);
