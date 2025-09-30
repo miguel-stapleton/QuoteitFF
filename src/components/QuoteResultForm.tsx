@@ -944,11 +944,23 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                   onClick={async () => {
                     if (pendingOverwrite) {
                       try {
-                        await QuotesAPI.update(pendingOverwrite.existingId!, pendingOverwrite.payload);
+                        console.log('Attempting to overwrite quote with ID:', pendingOverwrite.existingId);
+                        console.log('Payload:', pendingOverwrite.payload);
+                        
+                        await QuotesAPI.update(pendingOverwrite.existingId!, {
+                          title: pendingOverwrite.payload.title,
+                          appState: pendingOverwrite.payload.appState,
+                          version: pendingOverwrite.payload.version
+                        });
                         showNotice({ type: 'success', text: 'Quote overwritten successfully.' });
                       } catch (error) {
                         console.error('Error overwriting quote:', error);
-                        showNotice({ type: 'error', text: 'Failed to overwrite quote. Please try again.' });
+                        console.error('Error details:', {
+                          status: (error as any)?.status,
+                          message: (error as any)?.message,
+                          body: (error as any)?.body
+                        });
+                        showNotice({ type: 'error', text: `Failed to overwrite quote: ${(error as any)?.message || 'Unknown error'}. Please try again.` });
                       }
                     }
                     setShowOverwriteModal(false);

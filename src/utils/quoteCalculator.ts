@@ -18,23 +18,39 @@ interface CalculationInput {
   existingCalculations?: CalculationResult[];
 }
 
-export function calculateQuote(params: CalculationInput): {
+export function calculateQuote(input: CalculationInput): {
   calculations: CalculationResult[];
   grandSummary: GrandSummary;
 } {
-  const { serviceChoice, makeupForm, hairForm, prices, weddingDates, existingCalculations } = params;
-
-  const calculations: CalculationResult[] = existingCalculations || [];
+  const calculations: CalculationResult[] = [];
 
   // Calculate makeup if selected
-  if (serviceChoice.makeup && makeupForm) {
-    const makeupResult = calculateMakeupService(makeupForm, prices, weddingDates);
+  if (input.serviceChoice.makeup && input.makeupForm) {
+    const makeupResult = calculateMakeupService(input.makeupForm, input.prices, input.weddingDates);
+    
+    // Only preserve payments from existing calculations, not the entire calculation
+    const existingMakeup = input.existingCalculations?.find(calc => calc.serviceType === 'makeup');
+    if (existingMakeup?.payments && existingMakeup.payments.length > 0) {
+      makeupResult.payments = [...existingMakeup.payments]; // Copy payments array
+      makeupResult.totalPaid = existingMakeup.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      makeupResult.due = Math.max(0, makeupResult.subtotal - makeupResult.totalPaid);
+    }
+    
     calculations.push(makeupResult);
   }
 
   // Calculate hair if selected
-  if (serviceChoice.hair && hairForm) {
-    const hairResult = calculateHairService(hairForm, prices, weddingDates);
+  if (input.serviceChoice.hair && input.hairForm) {
+    const hairResult = calculateHairService(input.hairForm, input.prices, input.weddingDates);
+    
+    // Only preserve payments from existing calculations, not the entire calculation
+    const existingHair = input.existingCalculations?.find(calc => calc.serviceType === 'hair');
+    if (existingHair?.payments && existingHair.payments.length > 0) {
+      hairResult.payments = [...existingHair.payments]; // Copy payments array
+      hairResult.totalPaid = existingHair.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      hairResult.due = Math.max(0, hairResult.subtotal - hairResult.totalPaid);
+    }
+    
     calculations.push(hairResult);
   }
 
