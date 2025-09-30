@@ -38,6 +38,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   const [notice, setNotice] = useState<null | { type: 'success' | 'error' | 'info'; text: string }>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
+  const [showOverwriteModal, setShowOverwriteModal] = useState(false);
+  const [pendingOverwrite, setPendingOverwrite] = useState<{title: string, payload: any, existingId?: string} | null>(null);
   const showNotice = (n: { type: 'success' | 'error' | 'info'; text: string }, timeoutMs = 3500) => {
     setNotice(n);
     if (timeoutMs > 0) {
@@ -75,16 +77,16 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           const existingId = e?.body?.id;
           if (existingId) {
             // Use the ID from the error response
-            await QuotesAPI.update(existingId, { title, appState: payload.appState, version: appVersion });
-            showNotice({ type: 'success', text: 'Existing quote overwritten successfully.' });
+            setPendingOverwrite({ title, payload, existingId });
+            setShowOverwriteModal(true);
           } else {
             // Fallback: search for the quote by title
             try {
               const list = await QuotesAPI.list();
               const match = list.find(q => q.title === title);
               if (match?._id) {
-                await QuotesAPI.update(match._id, { title, appState: payload.appState, version: appVersion });
-                showNotice({ type: 'success', text: 'Existing quote overwritten successfully.' });
+                setPendingOverwrite({ title, payload, existingId: match._id });
+                setShowOverwriteModal(true);
               } else {
                 showNotice({ type: 'error', text: 'A quote with this title already exists, but it could not be found for overwrite. Please try a different title.' });
               }
@@ -898,6 +900,68 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             </div>
           </div>
         )}
+        {showOverwriteModal && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+            onClick={(e) => e.target === e.currentTarget && setShowOverwriteModal(false)}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                padding: '24px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                minWidth: '400px',
+                maxWidth: '90vw'
+              }}
+            >
+              <h3 style={{ margin: '0 0 16px 0' }}>Overwrite Existing Quote</h3>
+              <p style={{ marginBottom: '16px' }}>
+                A quote with the title "{pendingOverwrite?.title}" already exists. Are you sure you want to overwrite it?
+              </p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowOverwriteModal(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (pendingOverwrite) {
+                      try {
+                        await QuotesAPI.update(pendingOverwrite.existingId!, pendingOverwrite.payload);
+                        showNotice({ type: 'success', text: 'Quote overwritten successfully.' });
+                      } catch (error) {
+                        console.error('Error overwriting quote:', error);
+                        showNotice({ type: 'error', text: 'Failed to overwrite quote. Please try again.' });
+                      }
+                    }
+                    setShowOverwriteModal(false);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Overwrite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {notice && (
           <div
             role="status"
@@ -943,7 +1007,11 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
               </div>
               {onEditForm && (
                 <button type="button"
-                  onClick={onEditForm}
+                  onClick={() => {
+                    // Ensure current payment data is saved to app state before navigating
+                    onPaymentUpdate(localCalculations);
+                    onEditForm();
+                  }}
                   className="btn btn-secondary edit-btn"
                   aria-label="Edit form details"
                 >
