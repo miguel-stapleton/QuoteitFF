@@ -1,7 +1,16 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { MongoClient, ObjectId } from 'mongodb';
 
-const client = new MongoClient(process.env.MONGODB_URI!);
+let client: MongoClient | null = null;
+
+async function getClient() {
+  if (!client) {
+    client = new MongoClient(process.env.MONGODB_URI!);
+    await client.connect();
+  }
+  return client;
+}
+
 const dbName = process.env.MONGODB_DB || 'fresh-faced';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -11,9 +20,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Invalid quote ID' });
   }
 
+  // Validate ObjectId format
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ error: 'Invalid quote ID format' });
+  }
+
   try {
-    await client.connect();
-    const db = client.db(dbName);
+    const mongoClient = await getClient();
+    const db = mongoClient.db(dbName);
     const collection = db.collection('quotes');
 
     if (req.method === 'GET') {
@@ -28,6 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PUT') {
+      console.log('PUT quote by ID:', id);
       const { title, appState, version } = req.body || {};
 
       // If updating title, ensure uniqueness across others
@@ -54,8 +69,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
 
       if (!result) {
+        console.log('Update failed - quote not found for ID:', id);
         return res.status(404).json({ error: 'Not found' });
       }
+      console.log('Quote updated successfully');
       return res.json(result);
     }
 
@@ -72,7 +89,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error('API Error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
-  } finally {
-    await client.close();
   }
 }

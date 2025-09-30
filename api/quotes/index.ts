@@ -1,13 +1,22 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { MongoClient } from 'mongodb';
 
-const client = new MongoClient(process.env.MONGODB_URI!);
+let client: MongoClient | null = null;
+
+async function getClient() {
+  if (!client) {
+    client = new MongoClient(process.env.MONGODB_URI!);
+    await client.connect();
+  }
+  return client;
+}
+
 const dbName = process.env.MONGODB_DB || 'fresh-faced';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    await client.connect();
-    const db = client.db(dbName);
+    const mongoClient = await getClient();
+    const db = mongoClient.db(dbName);
     const collection = db.collection('quotes');
 
     if (req.method === 'GET') {
@@ -43,7 +52,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error('API Error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
-  } finally {
-    await client.close();
   }
 }
