@@ -390,11 +390,14 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         </div>
         <table style="width: 100%; border-collapse: collapse;">
           <tbody>
-            ${perDayTotals.map(d => `
+            ${perDayTotals.map(d => {
+              const displayLabel = d.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(d.date);
+              return `
               <tr>
-                <td style="padding: 12px 20px; font-weight: 600; color: #1f2937;">${formatDateWithVenue(d.date)}</td>
+                <td style="padding: 12px 20px; font-weight: 600; color: #1f2937;">${displayLabel}</td>
                 <td style="padding: 12px 20px; text-align: right; font-family: monospace; font-weight: 700; color: #1f2937;">€${d.total.toFixed(2)}</td>
-              </tr>`).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>` : '';
@@ -548,7 +551,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       content += 'FINAL FINANCIAL SUMMARY PER DAY\n';
       content += lineSeparator + '\n';
       perDayTotals.forEach(d => {
-        content += formatLine(formatDateWithVenue(d.date), '', `€${d.total.toFixed(2)}`) + '\n';
+        const displayLabel = d.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(d.date);
+        content += formatLine(displayLabel, '', `€${d.total.toFixed(2)}`) + '\n';
       });
     }
 
@@ -842,7 +846,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(10);
         perDayTotals.forEach(d => {
-          pdf.text(formatDateWithVenue(d.date), margin, currentY);
+          const displayLabel = d.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(d.date);
+          pdf.text(displayLabel, margin, currentY);
           pdf.text(`€${d.total.toFixed(2)}`, margin + 140, currentY);
           currentY += lineHeight;
         });
@@ -949,7 +954,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         <div className="grand-summary-content">
           {perDayTotals.map(d => (
             <div key={d.date} className="summary-row">
-              <span className="summary-label">{formatDateWithVenue(d.date)}</span>
+              <span className="summary-label">{d.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(d.date)}</span>
               <span className="summary-amount grand-total">{formatCurrency(d.total)}</span>
             </div>
           ))}
@@ -1324,7 +1329,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
               <div key={dIdx} className="quote-table-container" style={{ marginTop: '0.5rem' }}>
                 <div className="artist-header" style={{ padding: '0.5rem 0' }}>
                   <div className="artist-info">
-                    <h4 style={{ margin: 0 }}>{formatDateWithVenue(day.date, day.venue)}</h4>
+                    <h4 style={{ margin: 0 }}>{day.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(day.date, day.venue)}</h4>
                   </div>
                 </div>
                 <table className="quote-table">
