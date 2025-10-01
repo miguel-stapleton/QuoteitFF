@@ -325,6 +325,62 @@ body {
   color: var(--text-secondary);
 }
 
+/* Progress Indicator */
+.progress-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.progress-step {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  border: 2px solid var(--border);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.progress-step.active {
+  background-color: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: scale(1.1);
+}
+
+.progress-step.completed {
+  background-color: var(--success);
+  color: white;
+  border-color: var(--success);
+}
+
+.progress-step.inactive {
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .progress-step {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+  
+  .progress-indicator {
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
 /* Payments Section Styles */
 .payments-section {
   background: var(--bg-secondary);
