@@ -744,3 +744,601 @@ body {
     width: 100%;
   }
 }
+
+/* ============================================
+   SCREEN 2: PRICE CONFIRMATION FORM STYLES
+   ============================================ */
+
+.price-confirmation-form {
+  padding-bottom: 2rem;
+}
+
+.price-confirmation-form .form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+}
+
+.price-confirmation-form .form-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.price-confirmation-form .subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.price-summary-card {
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.price-mode-indicator {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.price-mode-badge {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  border-radius: 50px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.price-mode-badge.default {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.price-mode-badge.custom {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.service-pricing-section {
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.service-pricing-section:last-child {
+  margin-bottom: 0;
+}
+
+.service-pricing-section h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--accent);
+}
+
+.price-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.price-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.price-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.price-item-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.price-item-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  color: var(--accent);
+}
+
+.price-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.price-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.price-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.price-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.price-input-wrapper .currency {
+  position: absolute;
+  left: 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.price-input {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 2.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.price-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.price-help {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.action-buttons {
+  margin-top: 2rem;
+}
+
+.editing-buttons,
+.confirmation-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.confirmation-buttons {
+  justify-content: flex-end;
+}
+
+.btn-large {
+  font-size: 1.25rem;
+  padding: 1.25rem 3rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+.btn-large:hover {
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ============================================
+   SCREEN 3: QUOTE RESULT FORM STYLES
+   ============================================ */
+
+.quote-result-form {
+  padding-bottom: 2rem;
+}
+
+.quote-result-form .form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
+  border-radius: 16px;
+  border: 2px solid #3b82f6;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .quote-result-form .form-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.quote-result-form .form-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+}
+
+.quote-result-form .form-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.quote-result-form .actions {
+  margin-top: 1rem;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.artist-quote-card {
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 0;
+  margin-bottom: 2rem;
+  box-shadow: 0 6px 20px var(--shadow);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.artist-quote-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.artist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  border-bottom: 2px solid var(--border);
+}
+
+.artist-info h3 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 0 0 0.25rem 0;
+}
+
+.wedding-dates {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+}
+
+.edit-btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+}
+
+.quote-table-container {
+  padding: 1.5rem 2rem;
+  background: var(--bg-primary);
+}
+
+.quote-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.quote-table thead {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  color: white;
+}
+
+.quote-table th {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quote-table th:last-child,
+.quote-table td:last-child {
+  text-align: right;
+}
+
+.quote-table th.calculation-col,
+.quote-table td.calculation-col {
+  text-align: center;
+}
+
+.quote-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.2s ease;
+}
+
+.quote-table tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.quote-table td {
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+}
+
+.service-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.calculation-col {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.total-amount {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.subtotal-row {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-top: 2px solid #f59e0b !important;
+}
+
+[data-theme="dark"] .subtotal-row {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+}
+
+.subtotal-label {
+  font-weight: 800;
+  color: #92400e;
+  font-size: 1.0625rem;
+  text-transform: uppercase;
+}
+
+[data-theme="dark"] .subtotal-label {
+  color: #fbbf24;
+}
+
+.subtotal-amount {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 800;
+  color: #92400e;
+  font-size: 1.25rem;
+}
+
+[data-theme="dark"] .subtotal-amount {
+  color: #fbbf24;
+}
+
+.grand-summary-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
+  border: 3px solid var(--accent);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .grand-summary-card {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.grand-summary-header {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  text-align: center;
+}
+
+.grand-summary-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.grand-summary-content {
+  padding: 2rem;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  border: 2px solid var(--border);
+}
+
+.summary-row:last-child {
+  margin-bottom: 0;
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.summary-label {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+.summary-amount {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 800;
+  font-size: 1.5rem;
+}
+
+.summary-amount.grand-total {
+  color: var(--accent);
+}
+
+.summary-amount.paid-total {
+  color: #059669;
+}
+
+.summary-amount.due-total {
+  color: #dc2626;
+  font-size: 1.75rem;
+}
+
+.export-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.notice-banner {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-help {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Mobile responsiveness for screens 2 & 3 */
+@media (max-width: 768px) {
+  .price-confirmation-form .form-header,
+  .quote-result-form .form-header {
+    padding: 1.5rem 1rem;
+  }
+  
+  .price-confirmation-form .form-header h2,
+  .quote-result-form .form-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .price-summary-card {
+    padding: 1.5rem;
+  }
+  
+  .service-pricing-section {
+    padding: 1rem;
+  }
+  
+  .price-summary {
+    grid-template-columns: 1fr;
+  }
+  
+  .price-editor {
+    grid-template-columns: 1fr;
+  }
+  
+  .editing-buttons,
+  .confirmation-buttons {
+    flex-direction: column;
+  }
+  
+  .artist-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .quote-table-container {
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  
+  .quote-table {
+    font-size: 0.875rem;
+  }
+  
+  .quote-table th,
+  .quote-table td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .export-actions {
+    flex-direction: column;
+  }
+  
+  .summary-amount {
+    font-size: 1.25rem;
+  }
+  
+  .summary-amount.due-total {
+    font-size: 1.5rem;
+  }
+}
