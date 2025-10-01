@@ -367,7 +367,11 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">${calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling'}</h4>
             ${paymentsHTML}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 2px solid #e5e7eb;">
-              <span style="font-weight: 700; color: #059669;">DUE:</span>
+              <span style="font-weight: 700; color: #111827;">TOTAL OF ${calc.artistName}'s ${calc.serviceType === 'makeup' ? 'MAKE-UP SERVICES' : 'HAIR SERVICES'}:</span>
+              <span style="font-family: monospace; font-weight: 700; color: #111827; font-size: 16px;">€${calc.subtotal.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 2px solid #e5e7eb;">
+              <span style="font-weight: 700; color: #059669;">${calc.serviceType === 'makeup' ? 'DUE (Make-up)' : 'DUE (Hairstylist)'}:</span>
               <span style="font-family: monospace; font-weight: 700; color: #059669; font-size: 16px;">€${calc.due.toFixed(2)}</span>
             </div>
           </div>
@@ -512,6 +516,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         content += formatLine('No payments recorded', '', '€0.00') + '\n';
       }
       content += lineSeparator + '\n';
+      content += formatLine('TOTAL OF ' + calc.artistName + "'s " + (calc.serviceType === 'makeup' ? 'MAKE-UP SERVICES' : 'HAIR SERVICES'), '', `€${calc.subtotal.toFixed(2)}`) + '\n';
       content += formatLine('DUE', '', `€${calc.due.toFixed(2)}`) + '\n\n';
 
       if (index < localCalculations.length - 1) {
@@ -728,8 +733,13 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         }
         currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
         pdf.setFont('helvetica', 'bold');
+        const serviceTypeLabel = calc.serviceType === 'makeup' ? 'MAKE-UP SERVICES' : 'HAIR SERVICES';
+        pdf.text(`TOTAL OF ${calc.artistName}'s ${serviceTypeLabel}`, margin + 10, currentY);
+        pdf.text(`€${calc.subtotal.toFixed(2)}`, margin + 140, currentY);
+        currentY += 4; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
         pdf.setTextColor(5, 150, 105); // Dark green color
-        pdf.text('DUE', margin + 10, currentY);
+        const dueLabel = calc.serviceType === 'makeup' ? 'DUE (Make-up)' : 'DUE (Hairstylist)';
+        pdf.text(dueLabel, margin + 10, currentY);
         pdf.text(`€${calc.due.toFixed(2)}`, margin + 140, currentY);
         pdf.setTextColor(0, 0, 0); // Reset to black
         currentY += sectionSpacing;
