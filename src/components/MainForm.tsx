@@ -308,8 +308,19 @@ export const MainForm: React.FC<MainFormProps> = ({
       <div className="header">
         <div className="header-content">
           <div className="header-text">
-            <h1>Fresh Faced Quoter</h1>
-            <p>Professional makeup and hair services for your special day</p>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+              <img 
+                src="/logo.jpg" 
+                alt="Quote it! Logo" 
+                style={{ 
+                  maxWidth: '120px', 
+                  height: 'auto',
+                  borderRadius: '8px'
+                }} 
+              />
+            </div>
+            <h1>Quote it!</h1>
+            <p>Give your bride a complete idea of how much she owes</p>
           </div>
           <div className="header-actions">
             <button 

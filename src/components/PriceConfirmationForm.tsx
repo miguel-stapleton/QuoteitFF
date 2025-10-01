@@ -39,7 +39,9 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
     extraTrial: agneFlatRate.addOns.extraTrial,
     extraDay: agneFlatRate.addOns.extraDay,
     extraGuest: agneFlatRate.addOns.extraGuest,
-    extraHourRate: agneFlatRate.addOns.extraHourRate
+    extraHourRate: agneFlatRate.addOns.extraHourRate,
+    depositMain: agneFlatRate.deposits.main,
+    depositAssistant: agneFlatRate.deposits.assistant
   });
 
   const isAgneFlatRate = serviceChoice.hair && hairForm?.artist === HairArtist.Agne;
@@ -461,6 +463,50 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
                       Hourly rate for touch-ups beyond the 8 hours included
                     </small>
                   </div>
+
+                  <div className="price-field">
+                    <label htmlFor="agne-deposit-main" className="price-label">
+                      Main Artist Deposit
+                    </label>
+                    <div className="price-input-wrapper">
+                      <span className="currency" aria-hidden="true">€</span>
+                      <input
+                        id="agne-deposit-main"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={agneFlatRateCustom.depositMain}
+                        onChange={(e) => setAgneFlatRateCustom(prev => ({ ...prev, depositMain: parseFloat(e.target.value) || 0 }))}
+                        className="price-input"
+                        aria-describedby="agne-deposit-main-help"
+                      />
+                    </div>
+                    <small id="agne-deposit-main-help" className="price-help">
+                      Required deposit to secure Agne (used for priority warnings only)
+                    </small>
+                  </div>
+
+                  <div className="price-field">
+                    <label htmlFor="agne-deposit-assistant" className="price-label">
+                      Assistant Deposit
+                    </label>
+                    <div className="price-input-wrapper">
+                      <span className="currency" aria-hidden="true">€</span>
+                      <input
+                        id="agne-deposit-assistant"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={agneFlatRateCustom.depositAssistant}
+                        onChange={(e) => setAgneFlatRateCustom(prev => ({ ...prev, depositAssistant: parseFloat(e.target.value) || 0 }))}
+                        className="price-input"
+                        aria-describedby="agne-deposit-assistant-help"
+                      />
+                    </div>
+                    <small id="agne-deposit-assistant-help" className="price-help">
+                      Required deposit per assistant (used for priority warnings only)
+                    </small>
+                  </div>
                 </div>
               ) : (
                 <div className="price-summary" role="group" aria-labelledby="agne-flat-rate-summary-heading">
@@ -487,6 +533,9 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
                   <div className="price-item">
                     <span className="price-item-label">Extra Hour:</span>
                     <span className="price-item-value">€{agneFlatRateCustom.extraHourRate.toFixed(2)}</span>
+                  </div>
+                  <div className="price-item" style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                    <span>Deposit amounts (Main: €{agneFlatRateCustom.depositMain.toFixed(2)}, Assistant: €{agneFlatRateCustom.depositAssistant.toFixed(2)}) are used for priority warnings only</span>
                   </div>
                 </div>
               )
