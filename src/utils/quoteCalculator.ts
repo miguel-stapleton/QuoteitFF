@@ -42,7 +42,7 @@ export function calculateQuote(input: CalculationInput): {
     const numPeople = input.makeupForm?.perDay?.reduce((max, day) => Math.max(max, day.numPeople || 1), 1) || 1;
     makeupResult.priorityWarnings = generatePriorityWarnings(
       'makeup',
-      input.makeupForm?.artist,
+      input.makeupForm?.artist || '',
       numPeople,
       makeupResult.payments,
       input.prices.makeup.bridalUnit,
@@ -74,7 +74,7 @@ export function calculateQuote(input: CalculationInput): {
     const numPeople = input.hairForm?.perDay?.reduce((max, day) => Math.max(max, day.numPeople || 1), 1) || 1;
     hairResult.priorityWarnings = generatePriorityWarnings(
       'hair',
-      input.hairForm?.artist,
+      input.hairForm?.artist || '',
       numPeople,
       hairResult.payments,
       input.prices.hair.bridalUnit,
@@ -100,7 +100,7 @@ export function calculateQuote(input: CalculationInput): {
       const numPeople = Math.max(1, calc.dayBreakdowns.reduce((sum, day) => sum + day.lines.reduce((s, line) => s + (line.label === 'Guests' ? line.qty : 0), 0), 0));
       const warnings = generatePriorityWarnings(
         'makeup',
-        calc.artistName,
+        calc.artistName || '',
         numPeople,
         calc.payments,
         calc.lines.find(line => line.label === 'Bridal MU')?.unit || 0,
@@ -111,7 +111,7 @@ export function calculateQuote(input: CalculationInput): {
       const numPeople = Math.max(1, calc.dayBreakdowns.reduce((sum, day) => sum + day.lines.reduce((s, line) => s + (line.label === 'Guests' ? line.qty : 0), 0), 0));
       const warnings = generatePriorityWarnings(
         'hair',
-        calc.artistName,
+        calc.artistName || '',
         numPeople,
         calc.payments,
         calc.lines.find(line => line.label === 'Bridal H')?.unit || 0,
@@ -272,7 +272,7 @@ function calculateMakeupService(
   ];
 
   return {
-    artistName: form.artist,
+    artistName: form.artist || '',
     serviceType: 'makeup' as const,
     lines: allLines,
     subtotal,
@@ -434,7 +434,7 @@ function calculateHairService(
   ];
 
   return {
-    artistName: form.artist,
+    artistName: form.artist || '',
     serviceType: 'hair' as const,
     lines: allLines,
     subtotal,
@@ -462,7 +462,7 @@ function calculateGrandSummary(calculations: CalculationResult[]): GrandSummary 
 
 function generatePriorityWarnings(
   serviceType: 'makeup' | 'hair',
-  artistName?: string,
+  artistName: string = '',
   numPeople: number,
   payments: { occasion: string }[],
   bridalUnitPrice: number,
