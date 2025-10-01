@@ -436,12 +436,29 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
   const computePerDayTotals = (calcs: CalculationResult[]) => {
     const totals: Record<string, number> = {};
+    
+    // Add pre-wedding totals from global lines
+    let preWeddingTotal = 0;
+    calcs.forEach(c => {
+      const globalLines = extractGlobalLines(c);
+      const globalTotal = globalLines.reduce((sum, line) => sum + line.total, 0);
+      preWeddingTotal += globalTotal;
+    });
+    
+    // Add day breakdowns
     calcs.forEach(c => {
       (c.dayBreakdowns || []).forEach(d => {
         totals[d.date] = (totals[d.date] || 0) + d.subtotal;
       });
     });
-    return Object.entries(totals).map(([date, total]) => ({ date, total }));
+    
+    // Build result array with Pre-wedding first, then days
+    const result = [];
+    if (preWeddingTotal > 0) {
+      result.push({ date: 'Pre-wedding', total: preWeddingTotal });
+    }
+    result.push(...Object.entries(totals).map(([date, total]) => ({ date, total })));
+    return result;
   };
 
   const generatePlainTextTable = () => {
