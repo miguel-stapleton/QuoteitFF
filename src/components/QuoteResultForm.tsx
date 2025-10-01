@@ -759,7 +759,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
               xOffset += 5;
               
               // Render each part, with euro amounts in bold
-              parts.forEach(part => {
+              parts.forEach((part: string) => {
                 if (part.match(euroRegex)) {
                   // This is a euro amount - render in bold
                   pdf.setFont('helvetica', 'bold');
@@ -771,7 +771,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                   // Handle line wrapping for long text
                   const maxWidth = pageWidth - xOffset - margin;
                   const wrappedLines = pdf.splitTextToSize(part, maxWidth);
-                  wrappedLines.forEach(line => {
+                  wrappedLines.forEach((line: string) => {
                     if (wrappedLines.indexOf(line) > 0) {
                       currentY += lineHeight;
                       xOffset = margin + 15; // Indent continuation lines
