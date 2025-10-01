@@ -57,7 +57,7 @@ export const MainForm: React.FC<MainFormProps> = ({
       setQuotes(items);
     } catch (e) {
       console.error(e);
-      setLoadError('Failed to fetch saved schedules. Ensure the backend is running and your IP is allowed in MongoDB Atlas.');
+      setLoadError('Failed to fetch saved quotes. Ensure the backend is running and your IP is allowed in MongoDB Atlas.');
     } finally {
       setLoadingQuotes(false);
     }
@@ -92,7 +92,25 @@ export const MainForm: React.FC<MainFormProps> = ({
     } catch (error) {
       console.error('Failed to load quote:', error);
       const errorMessage = (error as any)?.message || 'Unknown error';
-      setLoadError(`Failed to load the selected schedule: ${errorMessage}. Please try again or contact support if the issue persists.`);
+      setLoadError(`Failed to load the selected quote: ${errorMessage}. Please try again or contact support if the issue persists.`);
+    }
+  };
+
+  const deleteQuoteById = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoadError(null);
+      await QuotesAPI.delete(id);
+      // Refresh the list after deletion
+      const items = await QuotesAPI.list();
+      setQuotes(items);
+    } catch (error) {
+      console.error('Failed to delete quote:', error);
+      const errorMessage = (error as any)?.message || 'Unknown error';
+      setLoadError(`Failed to delete the quote: ${errorMessage}. Please try again.`);
     }
   };
 
@@ -297,9 +315,9 @@ export const MainForm: React.FC<MainFormProps> = ({
             <button 
               className="btn btn-secondary"
               onClick={openLoadModal}
-              title="Load a previously saved schedule"
+              title="Load a previously saved quote"
             >
-              📂 Load Schedule
+              📂 Load Quote
             </button>
             <button 
               className="settings-btn"
@@ -351,13 +369,13 @@ export const MainForm: React.FC<MainFormProps> = ({
         {showLoadModal && (
           <div className="modal-overlay" onClick={() => setShowLoadModal(false)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <h3>Load a Saved Schedule</h3>
+              <h3>Load a Saved Quote</h3>
               {loadingQuotes && <p>Loading…</p>}
               {loadError && <p style={{ color: '#b91c1c' }}>{loadError}</p>}
               {!loadingQuotes && !loadError && (
                 <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {quotes.length === 0 ? (
-                    <p>No saved schedules found.</p>
+                    <p>No saved quotes found.</p>
                   ) : (
                     quotes.map(q => (
                       <div key={q._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
@@ -365,7 +383,10 @@ export const MainForm: React.FC<MainFormProps> = ({
                           <div style={{ fontWeight: 600 }}>{q.title}</div>
                           <small>Updated: {new Date(q.updatedAt).toLocaleString('en-GB')}</small>
                         </div>
-                        <button className="btn btn-secondary btn-small" onClick={() => loadQuoteById(q._id)}>Load</button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="btn btn-secondary btn-small" onClick={() => loadQuoteById(q._id)}>Load</button>
+                          <button className="btn btn-danger btn-small" onClick={() => deleteQuoteById(q._id)}>Delete</button>
+                        </div>
                       </div>
                     ))
                   )}

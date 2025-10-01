@@ -350,7 +350,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
       const priorityWarningsHTML = calc.priorityWarnings.length > 0 ? calc.priorityWarnings.map(warning => 
         `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-weight: 500; color: #374151;">Priority Warning</span>
+          <span style="font-weight: 500; color: #374151;">DUE: Priority</span>
           <span style="font-family: monospace; font-weight: 600; color: #059669;">${warning.text}</span>
         </div>`
       ).join('') : '';
@@ -367,12 +367,12 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">${calc.serviceType === 'makeup' ? 'PAYMENTS- Make-up' : 'PAYMENTS- Hairstyling'}</h4>
             ${paymentsHTML}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 2px solid #e5e7eb;">
-              <span style="font-weight: 700; color: #dc2626;">DUE:</span>
-              <span style="font-family: monospace; font-weight: 700; color: #dc2626; font-size: 16px;">€${calc.due.toFixed(2)}</span>
+              <span style="font-weight: 700; color: #059669;">DUE:</span>
+              <span style="font-family: monospace; font-weight: 700; color: #059669; font-size: 16px;">€${calc.due.toFixed(2)}</span>
             </div>
           </div>
           <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
-            <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">Priority Warnings</h4>
+            <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #374151;">DUE: Priority</h4>
             ${priorityWarningsHTML}
           </div>
         </div>`;
@@ -411,8 +411,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
               <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 600; color: #059669;">€${grandSummary.totalPaid.toFixed(2)}</td>
             </tr>
             <tr>
-              <td style="padding: 12px 24px; font-weight: 700; color: #dc2626;">TOTAL DUE</td>
-              <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 700; color: #dc2626; font-size: 16px;">€${grandSummary.totalDue.toFixed(2)}</td>
+              <td style="padding: 12px 24px; font-weight: 700; color: #059669;">TOTAL DUE</td>
+              <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 700; color: #059669; font-size: 16px;">€${grandSummary.totalDue.toFixed(2)}</td>
             </tr>
           </tbody>
         </table>
@@ -723,8 +723,10 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         }
         currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
         pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(5, 150, 105); // Dark green color
         pdf.text('DUE', margin + 10, currentY);
         pdf.text(`€${calc.due.toFixed(2)}`, margin + 140, currentY);
+        pdf.setTextColor(0, 0, 0); // Reset to black
         currentY += sectionSpacing;
 
         // Priority Warnings section
@@ -733,25 +735,59 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(185, 28, 28); // Dark red color
-          pdf.text('PRIORITY WARNINGS', margin, currentY);
+          pdf.text('DUE: Priority', margin, currentY);
           currentY += 6;
           pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'normal');
           calc.priorityWarnings.forEach(warning => {
             if (warning.text && warning.text.trim()) {
-              // Split text if it's too long
-              const warningLines = pdf.splitTextToSize(`• ${warning.text}`, pageWidth - (margin * 2) - 10);
-              warningLines.forEach((line: string) => {
-                if (currentY > pageHeight - margin) {
-                  pdf.addPage();
-                  currentY = margin;
-                  pdf.setTextColor(185, 28, 28); // Maintain red color on new page
-                  pdf.setFontSize(9);
+              // Split text by euro amounts to render them in bold
+              const euroRegex = /(€\d+\.?\d*)/g;
+              const parts = warning.text.split(euroRegex);
+              
+              // Check if we need a new page
+              if (currentY > pageHeight - margin) {
+                pdf.addPage();
+                currentY = margin;
+                pdf.setTextColor(185, 28, 28);
+                pdf.setFontSize(9);
+              }
+              
+              // Render bullet point
+              pdf.setFont('helvetica', 'normal');
+              let xOffset = margin + 10;
+              pdf.text('•', xOffset, currentY);
+              xOffset += 5;
+              
+              // Render each part, with euro amounts in bold
+              parts.forEach((part, idx) => {
+                if (part.match(euroRegex)) {
+                  // This is a euro amount - render in bold
+                  pdf.setFont('helvetica', 'bold');
+                  pdf.text(part, xOffset, currentY);
+                  xOffset += pdf.getTextWidth(part);
+                } else if (part) {
+                  // Regular text
                   pdf.setFont('helvetica', 'normal');
+                  // Handle line wrapping for long text
+                  const maxWidth = pageWidth - xOffset - margin;
+                  const wrappedLines = pdf.splitTextToSize(part, maxWidth);
+                  wrappedLines.forEach((line: string, lineIdx: number) => {
+                    if (lineIdx > 0) {
+                      currentY += lineHeight;
+                      xOffset = margin + 15; // Indent continuation lines
+                      if (currentY > pageHeight - margin) {
+                        pdf.addPage();
+                        currentY = margin;
+                        pdf.setTextColor(185, 28, 28);
+                        pdf.setFontSize(9);
+                      }
+                    }
+                    pdf.text(line, xOffset, currentY);
+                    xOffset += pdf.getTextWidth(line);
+                  });
                 }
-                pdf.text(line, margin + 10, currentY);
-                currentY += lineHeight;
               });
+              currentY += lineHeight;
             }
           });
           pdf.setTextColor(0, 0, 0); // Reset to black
@@ -1407,7 +1443,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                   <span className="payment-summary-amount paid-total">{formatCurrency(calc.totalPaid)}</span>
                 </div>
                 <div className="payment-summary-row">
-                  <span className="payment-summary-label">DUE:</span>
+                  <span className="payment-summary-label" style={{ color: '#059669' }}>DUE:</span>
                   <span className="payment-summary-amount due-total">{formatCurrency(calc.due)}</span>
                 </div>
               </div>
@@ -1415,7 +1451,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
             <div className="priority-warnings-section">
               <div className="priority-warnings-header">
-                <h4>Priority Warnings</h4>
+                <h4>DUE: Priority</h4>
                 <button type="button"
                   onClick={() => addPriorityWarning(index)}
                   className="btn btn-secondary btn-small"
@@ -1480,7 +1516,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                 <span className="summary-amount paid-total">{formatCurrency(grandSummary.totalPaid)}</span>
               </div>
               <div className="summary-row">
-                <span className="summary-label">TOTAL DUE</span>
+                <span className="summary-label" style={{ color: '#059669' }}>TOTAL DUE</span>
                 <span className="summary-amount due-total">{formatCurrency(grandSummary.totalDue)}</span>
               </div>
             </div>
