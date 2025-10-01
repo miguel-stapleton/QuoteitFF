@@ -674,11 +674,16 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             const calculation = line.qty && line.unit ? `${line.qty} x €${line.unit.toFixed(2)}` : '';
             drawRow(label, calculation, `€${line.total.toFixed(2)}`);
           });
+          currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
+          pdf.setFont('helvetica', 'bold');
+          const preWeddingSubtotal = globalLines.reduce((sum, line) => sum + line.total, 0);
+          pdf.text('SUBTOTAL PRE-WEDDING', margin, currentY);
+          pdf.text(`€${preWeddingSubtotal.toFixed(2)}`, margin + 140, currentY);
           currentY += sectionSpacing;
         }
 
         // Per-day sections
-        (calc.dayBreakdowns || []).forEach(day => {
+        (calc.dayBreakdowns || []).forEach((day, dayIndex) => {
           if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(11);
@@ -697,7 +702,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           });
           currentY += 2; pdf.line(margin, currentY, pageWidth - margin, currentY); currentY += 4;
           pdf.setFont('helvetica', 'bold');
-          pdf.text('SUBTOTAL', margin, currentY);
+          pdf.text(`SUBTOTAL DAY ${dayIndex + 1}`, margin, currentY);
           pdf.text(`€${day.subtotal.toFixed(2)}`, margin + 140, currentY);
           currentY += sectionSpacing;
         });
@@ -1477,6 +1482,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                             value={warning.text}
                             onChange={(e) => updatePriorityWarning(index, warning.id, e.target.value)}
                             className="priority-warning-text-input"
+
                           />
                         </div>
                         <button type="button"
