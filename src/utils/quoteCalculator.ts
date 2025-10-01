@@ -97,7 +97,7 @@ export function calculateQuote(input: CalculationInput): {
   const priorityWarnings: PriorityWarning[] = [];
   calculations.forEach(calc => {
     if (calc.serviceType === 'makeup') {
-      const numPeople = Math.max(1, calc.dayBreakdowns.reduce((sum, day) => sum + day.lines.reduce((s, line) => s + (line.label === 'Guests' ? line.qty : 0), 0), 0));
+      const numPeople = Math.max(1, calc.dayBreakdowns.reduce((sum, day) => sum + day.lines.reduce((s, line) => s + (line.label === 'Guests' ? (line.qty || 0) : 0), 0), 0));
       const warnings = generatePriorityWarnings(
         'makeup',
         calc.artistName || '',
@@ -108,7 +108,7 @@ export function calculateQuote(input: CalculationInput): {
       );
       priorityWarnings.push(...warnings);
     } else if (calc.serviceType === 'hair') {
-      const numPeople = Math.max(1, calc.dayBreakdowns.reduce((sum, day) => sum + day.lines.reduce((s, line) => s + (line.label === 'Guests' ? line.qty : 0), 0), 0));
+      const numPeople = Math.max(1, calc.dayBreakdowns.reduce((sum, day) => sum + day.lines.reduce((s, line) => s + (line.label === 'Guests' ? (line.qty || 0) : 0), 0), 0));
       const warnings = generatePriorityWarnings(
         'hair',
         calc.artistName || '',
