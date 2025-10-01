@@ -234,3 +234,29 @@ export const hairArtistPrices: Record<HairArtist, ServicePricing> = {
     exclusivityFee: 100
   }
 };
+
+// Agne's Flat Rate Pricing Structure
+export const agneFlatRate = {
+  baseRate: 1400,
+  baseIncludes: {
+    trials: 1,
+    bridalDays: 1,
+    guestsIncluded: 3,
+    hoursIncluded: 8
+  },
+  addOns: {
+    extraTrial: 175,
+    extraDay: 250, // Bride only per extra day
+    extraGuest: 100, // Per guest beyond 3 on any day
+    extraHourRate: 50, // Per hour beyond 8
+    assistantDeposit: 100, // Per additional artist
+    welcomeEventDeposit: 100 // Per welcome event day
+  },
+  deposits: {
+    trial: 175, // Paid on day of trial
+    main: 175, // To secure Agne
+    assistant: 100, // Per additional artist
+    welcomeEvent: 100 // Per welcome event
+  },
+  travelFeeMultiplier: 0.35 // 35% of base travel fee per additional artist
+};

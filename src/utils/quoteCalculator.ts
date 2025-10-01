@@ -7,8 +7,10 @@ import {
   CalculationLine,
   GrandSummary,
   DayBreakdown,
-  PriorityWarning
+  PriorityWarning,
+  HairArtist
 } from '../types';
+import { agneFlatRate } from '../data/services';
 
 interface CalculationInput {
   serviceChoice: ServiceChoice;
@@ -291,6 +293,11 @@ function calculateHairService(
   prices: DefaultPrices, 
   weddingDates: string[]
 ): CalculationResult {
+  // Check if this is Agne's flat rate
+  if (form.artist === HairArtist.Agne) {
+    return calculateAgneFlatRate(form, weddingDates);
+  }
+
   const hairPrices = prices.hair;
 
   // Global (service-level) lines
@@ -448,6 +455,175 @@ function calculateHairService(
   };
 }
 
+function calculateAgneFlatRate(
+  form: HairForm,
+  weddingDates: string[]
+): CalculationResult {
+  const globalLines: CalculationLine[] = [];
+  const dayBreakdowns: DayBreakdown[] = [];
+
+  // Extra trials beyond the first included (global line)
+  if (form.trials > 1) {
+    const extraTrials = form.trials - 1;
+    globalLines.push({
+      label: 'Extra Trial Sessions',
+      qty: extraTrials,
+      unit: agneFlatRate.addOns.extraTrial,
+      total: extraTrials * agneFlatRate.addOns.extraTrial
+    });
+  }
+
+  // Trial travel fee (global line)
+  if (form.trialTravelEnabled && form.trialTravelFee > 0) {
+    globalLines.push({
+      label: 'Trial travel fee',
+      meta: form.trialVenue,
+      total: form.trialTravelFee
+    });
+  }
+
+  // Per-day calculations
+  weddingDates.forEach((date, idx) => {
+    const day = form.perDay?.[idx] || {
+      scheduledReturn: false,
+      scheduledReturnBride: false,
+      scheduledReturnGuests: 0,
+      guests: 0,
+      travelFee: 0,
+      numPeople: 1,
+      numCars: 1,
+      exclusivity: false,
+      touchupHours: 0,
+      beautyVenue: ''
+    };
+
+    const lines: CalculationLine[] = [];
+
+    if (idx === 0) {
+      // Day 1: Start with base flat rate
+      lines.push({
+        label: "Agne's flat rate",
+        meta: 'Includes: 1 trial, bridal hairstyle + up to 3 guests, 8 hours on Day 1',
+        total: agneFlatRate.baseRate
+      });
+
+      // Only charge for guests beyond 3
+      if (day.guests > 3) {
+        const extraGuests = day.guests - 3;
+        lines.push({
+          label: 'Extra Guests (beyond 3 included)',
+          qty: extraGuests,
+          unit: agneFlatRate.addOns.extraGuest,
+          total: extraGuests * agneFlatRate.addOns.extraGuest
+        });
+      }
+
+      // Touch-ups beyond 8 hours
+      if (day.touchupHours > 0) {
+        lines.push({
+          label: 'Extra Hours (beyond 8 included)',
+          meta: `${day.touchupHours}h`,
+          qty: day.touchupHours,
+          unit: agneFlatRate.addOns.extraHourRate,
+          total: day.touchupHours * agneFlatRate.addOns.extraHourRate
+        });
+      }
+    } else {
+      // Extra days: €250 for bride only
+      lines.push({
+        label: 'Extra Day (Bride)',
+        qty: 1,
+        unit: agneFlatRate.addOns.extraDay,
+        total: agneFlatRate.addOns.extraDay
+      });
+
+      // All guests on extra days are charged
+      if (day.guests > 0) {
+        lines.push({
+          label: 'Extra Day Guests',
+          qty: day.guests,
+          unit: agneFlatRate.addOns.extraGuest,
+          total: day.guests * agneFlatRate.addOns.extraGuest
+        });
+      }
+
+      // Touch-ups on extra days (no free hours)
+      if (day.touchupHours > 0) {
+        lines.push({
+          label: 'Touch-ups',
+          meta: `${day.touchupHours}h`,
+          qty: day.touchupHours,
+          unit: agneFlatRate.addOns.extraHourRate,
+          total: day.touchupHours * agneFlatRate.addOns.extraHourRate
+        });
+      }
+    }
+
+    // Travel fees (same logic for all days)
+    if (day.travelFee > 0) {
+      const numPeople = Math.max(1, (day as any).numPeople || 1);
+      const numCars = Math.max(0, day.numCars || 0);
+      const carCount = Math.min(numCars, numPeople);
+      const assistantsCount = Math.max(0, numPeople - numCars);
+
+      // Base travel fee for cars
+      const travellingCarsTotal = day.travelFee * carCount;
+      if (travellingCarsTotal > 0) {
+        lines.push({
+          label: 'Travelling fee (cars)',
+          qty: carCount,
+          unit: day.travelFee,
+          total: travellingCarsTotal
+        });
+      }
+
+      // Agne's assistant travel: 35% per assistant
+      const assistantUnit = agneFlatRate.travelFeeMultiplier * day.travelFee;
+      const assistantTravelTotal = assistantUnit * assistantsCount;
+      if (assistantTravelTotal > 0) {
+        lines.push({
+          label: 'Assistant travel fee',
+          meta: '35% × (people − cars)',
+          qty: assistantsCount,
+          unit: +assistantUnit.toFixed(2),
+          total: +assistantTravelTotal.toFixed(2)
+        });
+      }
+    }
+
+    const subtotal = lines.reduce((s, l) => s + l.total, 0);
+    dayBreakdowns.push({ date, lines, subtotal, venue: day.beautyVenue || undefined });
+  });
+
+  // Aggregate totals
+  const perDayTotal = dayBreakdowns.reduce((s, d) => s + d.subtotal, 0);
+  const globalTotal = globalLines.reduce((s, l) => s + l.total, 0);
+  const subtotal = perDayTotal + globalTotal;
+
+  // Flatten lines with date meta for backward-compatible display/exports
+  const allLines: CalculationLine[] = [
+    ...globalLines,
+    ...dayBreakdowns.flatMap((d) => d.lines.map(line => ({
+      ...line,
+      meta: line.meta ? `${d.date ? new Date(d.date).toLocaleDateString('en-GB') : 'Day'} • ${line.meta}` : (d.date ? new Date(d.date).toLocaleDateString('en-GB') : undefined)
+    })))
+  ];
+
+  return {
+    artistName: form.artist || 'Agne',
+    serviceType: 'hair' as const,
+    lines: allLines,
+    subtotal,
+    payments: [],
+    totalPaid: 0,
+    due: subtotal,
+    weddingDates,
+    venueNotes: form.trialVenue || '',
+    dayBreakdowns,
+    priorityWarnings: []
+  };
+}
+
 function calculateGrandSummary(calculations: CalculationResult[]): GrandSummary {
   const grandTotal = calculations.reduce((sum, calc) => sum + calc.subtotal, 0);
   const totalPaid = calculations.reduce((sum, calc) => sum + calc.totalPaid, 0);
@@ -473,6 +649,9 @@ function generatePriorityWarnings(
   const serviceLabel = isMakeup ? 'MUA' : 'HS';
   const serviceName = isMakeup ? 'make-up artist' : 'hairstylist';
   
+  // Special handling for Agne's flat rate
+  const isAgneFlatRate = !isMakeup && artistName === HairArtist.Agne;
+  
   // Check for Main Artist Deposit using fuzzy matching
   const hasMainDeposit = payments.some(p => {
     const occasion = p.occasion.toLowerCase();
@@ -483,10 +662,12 @@ function generatePriorityWarnings(
   });
   
   if (!hasMainDeposit) {
-    const depositAmount = (bridalUnitPrice / 2).toFixed(2);
+    const depositAmount = isAgneFlatRate 
+      ? agneFlatRate.deposits.main 
+      : (bridalUnitPrice / 2);
     warnings.push({
       id: `auto_main_${serviceType}_${Date.now()}`,
-      text: `Main ${serviceLabel} Deposit(s): your date with ${artistName} is not secure until a deposit of €${depositAmount} has been received.`,
+      text: `Main ${serviceLabel} Deposit(s): your date with ${artistName} is not secure until a deposit of €${depositAmount.toFixed(2)} has been received.`,
       autoGenerated: true
     });
   }
@@ -503,9 +684,12 @@ function generatePriorityWarnings(
     
     if (!hasAssistantDeposit) {
       const numAssistants = numPeople - 1;
+      const depositAmount = isAgneFlatRate 
+        ? agneFlatRate.deposits.assistant 
+        : guestUnitPrice;
       warnings.push({
         id: `auto_assistant_${serviceType}_${Date.now()}`,
-        text: `Assistant ${serviceLabel} Deposit(s): there ${numAssistants === 1 ? 'is' : 'are'} ${numAssistants} assistant ${serviceName}${numAssistants === 1 ? '' : 's'} described in your quote, but this artist will only be booked once a €${guestUnitPrice.toFixed(2)} deposit has been received.`,
+        text: `Assistant ${serviceLabel} Deposit(s): there ${numAssistants === 1 ? 'is' : 'are'} ${numAssistants} assistant ${serviceName}${numAssistants === 1 ? '' : 's'} described in your quote, but this artist will only be booked once a €${depositAmount.toFixed(2)} deposit has been received.`,
         autoGenerated: true
       });
     }

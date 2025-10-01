@@ -33,6 +33,8 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
   const trialDebounceRef = useRef<number | undefined>(undefined);
   const bvDebounceRefs = useRef<Record<number, number>>({});
 
+  const isAgneFlatRate = hairForm.artist === HairArtist.Agne;
+
   const defaultDay = (): HairDayDetails => ({
     scheduledReturn: false,
     scheduledReturnBride: false,
@@ -171,6 +173,11 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
           onBlur={(e) => handleNumberBlur('trials', e.target.value)}
           min="0"
         />
+        {isAgneFlatRate && hairForm.trials > 0 && (
+          <small className="form-help" style={{ color: '#059669', fontWeight: 600 }}>
+            Agne's flat rate includes 1 trial. {hairForm.trials > 1 ? `${hairForm.trials - 1} extra trial(s) will be charged at €175 each.` : ''}
+          </small>
+        )}
         {renderWarning('trials')}
       </div>
 
@@ -310,6 +317,31 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
               <p>Provide details for this day</p>
             </div>
 
+            {isAgneFlatRate && (
+              <div style={{
+                marginBottom: '1rem',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                border: '2px solid #059669',
+                borderRadius: '8px',
+                fontSize: '0.875rem'
+              }}>
+                <strong style={{ color: '#059669', display: 'block', marginBottom: '4px' }}>
+                  ✨ Agne's €1400 Flat Rate {idx === 0 ? 'Includes' : '(Day 1 only)'}:
+                </strong>
+                {idx === 0 ? (
+                  <ul style={{ margin: '4px 0', paddingLeft: '20px', color: '#065f46' }}>
+                    <li>Bridal hairstyle + up to 3 guests</li>
+                    <li>8 hours (touch-ups/2nd look included)</li>
+                  </ul>
+                ) : (
+                  <p style={{ margin: '4px 0', color: '#065f46' }}>
+                    Extra day: €250 for bride only. Guests charged separately at €100 each.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="input-group">
               <label htmlFor={`hair-beauty-venue-${idx}`} className="input-label">
                 Beauty Venue (location)
@@ -352,37 +384,14 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
               )}
             </div>
 
-            <div className="input-group">
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={day.scheduledReturn}
-                  onChange={(e) => updatePerDay(idx, { scheduledReturn: e.target.checked })}
-                  style={{ 
-                    marginRight: '0.75rem', 
-                    transform: 'scale(1.2)',
-                    accentColor: 'var(--accent)'
-                  }}
-                />
-                <span className="input-label" style={{ margin: 0 }}>
-                  Scheduled return?
-                </span>
-              </label>
-              {srVsTravelError && (
-                <ErrorMsg>
-                  Scheduled return is not allowed when a Travel fee is applied for Hair. Set Travel fee to 0 or turn off Scheduled return.
-                </ErrorMsg>
-              )}
-            </div>
-
-            {day.scheduledReturn && (
+            {!isAgneFlatRate && (
               <>
-                <div className="input-group" style={{ marginLeft: '2rem' }}>
+                <div className="input-group">
                   <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
-                      checked={day.scheduledReturnBride}
-                      onChange={(e) => updatePerDay(idx, { scheduledReturnBride: e.target.checked })}
+                      checked={day.scheduledReturn}
+                      onChange={(e) => updatePerDay(idx, { scheduledReturn: e.target.checked })}
                       style={{ 
                         marginRight: '0.75rem', 
                         transform: 'scale(1.2)',
@@ -390,31 +399,58 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                       }}
                     />
                     <span className="input-label" style={{ margin: 0 }}>
-                      Bride
+                      Scheduled return?
                     </span>
                   </label>
-                </div>
-
-                <div className="input-group" style={{ marginLeft: '2rem' }}>
-                  <label htmlFor={`hairScheduledReturnGuests-${idx}`} className="input-label">
-                    Guests (scheduled return)
-                  </label>
-                  <input
-                    type="number"
-                    id={`hairScheduledReturnGuests-${idx}`}
-                    className="input-field"
-                    placeholder="0"
-                    value={day.scheduledReturnGuests || ''}
-                    onChange={(e) => updatePerDay(idx, { scheduledReturnGuests: Math.max(0, parseInt(e.target.value) || 0) })}
-                    min="0"
-                  />
-                  {guestsRequireBrideError && (
+                  {srVsTravelError && (
                     <ErrorMsg>
-                      Guests scheduled return requires a scheduled return for the bride (Hair).
+                      Scheduled return is not allowed when a Travel fee is applied for Hair. Set Travel fee to 0 or turn off Scheduled return.
                     </ErrorMsg>
                   )}
-                  {renderWarning('scheduledReturnGuests')}
                 </div>
+
+                {day.scheduledReturn && (
+                  <>
+                    <div className="input-group" style={{ marginLeft: '2rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={day.scheduledReturnBride}
+                          onChange={(e) => updatePerDay(idx, { scheduledReturnBride: e.target.checked })}
+                          style={{ 
+                            marginRight: '0.75rem', 
+                            transform: 'scale(1.2)',
+                            accentColor: 'var(--accent)'
+                          }}
+                        />
+                        <span className="input-label" style={{ margin: 0 }}>
+                          Bride
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="input-group" style={{ marginLeft: '2rem' }}>
+                      <label htmlFor={`hairScheduledReturnGuests-${idx}`} className="input-label">
+                        Guests (scheduled return)
+                      </label>
+                      <input
+                        type="number"
+                        id={`hairScheduledReturnGuests-${idx}`}
+                        className="input-field"
+                        placeholder="0"
+                        value={day.scheduledReturnGuests || ''}
+                        onChange={(e) => updatePerDay(idx, { scheduledReturnGuests: Math.max(0, parseInt(e.target.value) || 0) })}
+                        min="0"
+                      />
+                      {guestsRequireBrideError && (
+                        <ErrorMsg>
+                          Guests scheduled return requires a scheduled return for the bride (Hair).
+                        </ErrorMsg>
+                      )}
+                      {renderWarning('scheduledReturnGuests')}
+                    </div>
+                  </>
+                )}
               </>
             )}
 
@@ -431,6 +467,16 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                 onChange={(e) => updatePerDay(idx, { guests: Math.max(0, parseInt(e.target.value) || 0) })}
                 min="0"
               />
+              {isAgneFlatRate && idx === 0 && day.guests > 3 && (
+                <small className="form-help" style={{ color: '#d97706', fontWeight: 600 }}>
+                  Flat rate includes up to 3 guests. {day.guests - 3} extra guest(s) will be charged at €100 each.
+                </small>
+              )}
+              {isAgneFlatRate && idx > 0 && day.guests > 0 && (
+                <small className="form-help" style={{ color: '#d97706', fontWeight: 600 }}>
+                  Extra day guests: {day.guests} guest(s) × €100 each = €{day.guests * 100}.
+                </small>
+              )}
               {renderWarning('guests')}
             </div>
 
@@ -448,7 +494,7 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                 min="0"
                 step="0.01"
               />
-              {srVsTravelError && (
+              {!isAgneFlatRate && srVsTravelError && (
                 <ErrorMsg>
                   Scheduled return is not allowed when a Travel fee is applied for Hair. Set Travel fee to 0 or turn off Scheduled return.
                 </ErrorMsg>
@@ -470,6 +516,11 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                 min="1"
               />
               <small className="form-help">Total people including the main artist.</small>
+              {isAgneFlatRate && (day as any).numPeople > 1 && (
+                <small className="form-help" style={{ color: '#d97706', fontWeight: 600 }}>
+                  {(day as any).numPeople - 1} additional artist(s) require €100 deposit each.
+                </small>
+              )}
               {numPeopleInvalid && (
                 <ErrorMsg>At least 1 person required for Hair.</ErrorMsg>
               )}
@@ -495,7 +546,7 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
               {numCarsInvalid && (
                 <ErrorMsg>At least 1 car required for Hair.</ErrorMsg>
               )}
-              {assistantsOneCarTouchupsError && (
+              {!isAgneFlatRate && assistantsOneCarTouchupsError && (
                 <ErrorMsg>
                   With assistants and only 1 car, add another car so assistants can return. Note: traveling fee is charged per car.
                 </ErrorMsg>
@@ -503,27 +554,31 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
               {renderWarning('numCars')}
             </div>
 
-            <div className="input-group">
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={day.exclusivity}
-                  onChange={(e) => updatePerDay(idx, { exclusivity: e.target.checked })}
-                  style={{ 
-                    marginRight: '0.75rem', 
-                    transform: 'scale(1.2)',
-                    accentColor: 'var(--accent)'
-                  }}
-                />
-                <span className="input-label" style={{ margin: 0 }}>
-                  Client is paying an exclusivity fee
-                </span>
-              </label>
-            </div>
+            {!isAgneFlatRate && (
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={day.exclusivity}
+                    onChange={(e) => updatePerDay(idx, { exclusivity: e.target.checked })}
+                    style={{ 
+                      marginRight: '0.75rem', 
+                      transform: 'scale(1.2)',
+                      accentColor: 'var(--accent)'
+                    }}
+                  />
+                  <span className="input-label" style={{ margin: 0 }}>
+                    Client is paying an exclusivity fee
+                  </span>
+                </label>
+              </div>
+            )}
 
             <div className="input-group">
               <label htmlFor={`hairTouchupHours-${idx}`} className="input-label">
-                How many hours of touch-ups? (default 0)
+                {isAgneFlatRate && idx === 0 
+                  ? 'Hours beyond the 8 included in the flat rate?' 
+                  : 'How many hours of touch-ups? (default 0)'}
               </label>
               <input
                 type="number"
@@ -535,7 +590,12 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                 min="0"
                 step="0.5"
               />
-              {assistantsOneCarTouchupsError && (
+              {isAgneFlatRate && idx === 0 && day.touchupHours > 0 && (
+                <small className="form-help" style={{ color: '#d97706', fontWeight: 600 }}>
+                  Extra {day.touchupHours} hour(s) × €50/hour = €{(day.touchupHours * 50).toFixed(2)}.
+                </small>
+              )}
+              {!isAgneFlatRate && assistantsOneCarTouchupsError && (
                 <ErrorMsg>
                   With assistants and only 1 car, add another car so assistants can return. Note: traveling fee is charged per car.
                 </ErrorMsg>
