@@ -8,6 +8,7 @@ import { MainForm } from './components/MainForm';
 import { PriceConfirmationForm } from './components/PriceConfirmationForm';
 import { QuoteResultForm } from './components/QuoteResultForm';
 import { DebugPanel } from './components/DebugPanel';
+import { IOSInstallPrompt } from './components/IOSInstallPrompt';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewState>('form');
@@ -187,6 +188,7 @@ export default function App() {
       <ProgressIndicator currentState={currentView as ViewState} />
       {renderCurrentView()}
       <DebugPanel onLoadScenario={handleLoadScenario} />
+      <IOSInstallPrompt />
     </div>
   );
 }
