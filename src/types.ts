@@ -154,6 +154,14 @@ export interface GrandSummary {
   totalDue: number;
 }
 
+// Commissions (UI-only, excluded from PDF)
+export interface CommissionEntry {
+  artistName: string;
+  serviceType: 'makeup' | 'hair';
+  amount: number; // amount to be paid by the artist to Fresh Faced
+  notes?: string;
+}
+
 // App State Types
 export interface AppState {
   version: string;
@@ -170,6 +178,8 @@ export interface AppState {
   // Cross-fill sync flags
   trialSyncEnabled?: boolean; // when both services selected, mirrors trialVenue bi-directionally
   beautyVenueSyncEnabled?: boolean[]; // per-day flags, mirrors beautyVenue per day
+  // UI-only: per-artist commissions (not exported to PDF)
+  commissions?: CommissionEntry[];
 }
 
 // UI State

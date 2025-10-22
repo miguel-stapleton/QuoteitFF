@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AppState, ServiceChoice, MultiDay, DefaultPrices, GrandSummary } from '../types';
+import { AppState, ServiceChoice, MultiDay, DefaultPrices, GrandSummary, CommissionEntry } from '../types';
 import { defaultPrices, defaultMakeupForm, defaultHairForm, seedMakeupDays, seedHairDays } from '../data/services';
 
 const STORAGE_KEY = 'fresh-faced-quoter-state';
@@ -18,7 +18,8 @@ const createDefaultAppState = (): AppState => ({
   grandSummary: { grandTotal: 0, totalPaid: 0, totalDue: 0 },
   lastUpdated: new Date().toISOString(),
   trialSyncEnabled: false,
-  beautyVenueSyncEnabled: []
+  beautyVenueSyncEnabled: [],
+  commissions: []
 });
 
 export const useLocalStorage = () => {
@@ -35,7 +36,8 @@ export const useLocalStorage = () => {
           ...createDefaultAppState(),
           ...parsedState,
           trialSyncEnabled: parsedState.trialSyncEnabled ?? false,
-          beautyVenueSyncEnabled: parsedState.beautyVenueSyncEnabled ?? []
+          beautyVenueSyncEnabled: parsedState.beautyVenueSyncEnabled ?? [],
+          commissions: parsedState.commissions ?? []
         };
         // Version migration logic
         if (merged.version !== CURRENT_VERSION) {
@@ -177,6 +179,10 @@ export const useLocalStorage = () => {
     });
   };
 
+  const updateCommissions = (commissions: CommissionEntry[]) => {
+    setAppState(prev => ({ ...prev, commissions }));
+  };
+
   const resetAppState = () => {
     setAppState(createDefaultAppState());
   };
@@ -198,6 +204,7 @@ export const useLocalStorage = () => {
     updateGrandSummary,
     updateTrialSyncEnabled,
     updateBeautyVenueSyncEnabled,
+    updateCommissions,
     resetAppState,
     clearStorage
   };

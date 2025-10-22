@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, HairForm, PriorityWarning } from '../types';
+import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, HairForm, PriorityWarning, CommissionEntry } from '../types';
 import jsPDF from 'jspdf';
 import { QuotesAPI } from '../api/quotes';
 
@@ -18,6 +18,9 @@ interface QuoteResultFormProps {
   getAppState?: () => any;
   applyLoadedAppState?: (state: any) => void;
   appVersion?: string;
+  // Commissions (UI-only, excluded from PDF)
+  commissions?: CommissionEntry[];
+  onCommissionsChange?: (commissions: CommissionEntry[]) => void;
 }
 
 export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
@@ -31,7 +34,9 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   makeupForm,
   hairForm,
   getAppState,
-  appVersion
+  appVersion,
+  commissions,
+  onCommissionsChange
 }) => {
   const [localCalculations, setLocalCalculations] = useState<CalculationResult[]>(calculations);
   const [saving, setSaving] = useState(false);
@@ -40,11 +45,88 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   const [customTitle, setCustomTitle] = useState('');
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
   const [pendingOverwrite, setPendingOverwrite] = useState<{title: string, payload: any, existingId?: string} | null>(null);
+  const [localCommissions, setLocalCommissions] = useState<CommissionEntry[]>(commissions || []);
   const showNotice = (n: { type: 'success' | 'error' | 'info'; text: string }, timeoutMs = 3500) => {
     setNotice(n);
     if (timeoutMs > 0) {
       window.setTimeout(() => setNotice(null), timeoutMs);
     }
+  };
+
+  // Keep local commissions aligned with props
+  useEffect(() => {
+    setLocalCommissions(commissions || []);
+  }, [commissions]);
+
+  // Ensure we have one commission entry per artist/service shown on screen
+  // Auto-calculate 20% commission on eligible services (excluding travel fees)
+  useEffect(() => {
+    const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+    const fromCalcs: CommissionEntry[] = localCalculations.map(c => {
+      const isExempt = exemptSet.has((c.artistName || '').toLowerCase());
+      const existing = (localCommissions || []).find(e => e.artistName === c.artistName && e.serviceType === c.serviceType);
+      
+      // Calculate 20% commission on eligible services (exclude travel fees)
+      let eligibleTotal = 0;
+      (c.dayBreakdowns || []).forEach(day => {
+        day.lines.forEach(line => {
+          const label = (line.label || '').toLowerCase();
+          // Exclude travel fees and assistant travel fees
+          if (!label.includes('travel') && !label.includes('assistant')) {
+            eligibleTotal += line.total;
+          }
+        });
+      });
+      // Add global lines (trials, etc.) but exclude travel fees
+      (c.lines || []).forEach(line => {
+        const label = (line.label || '').toLowerCase();
+        if (!label.includes('travel') && !label.includes('assistant')) {
+          // Only count if it's not already in dayBreakdowns (avoid double-counting)
+          const isInDayBreakdowns = (c.dayBreakdowns || []).some(d => 
+            d.lines.some(dl => dl.label === line.label && dl.total === line.total)
+          );
+          if (!isInDayBreakdowns) {
+            eligibleTotal += line.total;
+          }
+        }
+      });
+      
+      const calculatedCommission = eligibleTotal * 0.2; // 20% commission
+      
+      return {
+        artistName: c.artistName,
+        serviceType: c.serviceType,
+        amount: isExempt ? 0 : (existing?.amount !== undefined ? existing.amount : calculatedCommission),
+        notes: existing?.notes || ''
+      };
+    });
+    // Only update if different length or different keys
+    const changed = fromCalcs.length !== localCommissions.length || fromCalcs.some((e, i) => {
+      const m = localCommissions[i];
+      if (!m) return true;
+      return e.artistName !== m.artistName || e.serviceType !== m.serviceType;
+    });
+    if (changed) {
+      setLocalCommissions(fromCalcs);
+      onCommissionsChange && onCommissionsChange(fromCalcs);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localCalculations]);
+
+  const updateCommission = (index: number, field: keyof CommissionEntry, value: string | number) => {
+    setLocalCommissions(prev => {
+      const next = [...prev];
+      const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+      const isExempt = exemptSet.has((next[index]?.artistName || '').toLowerCase());
+      if (field === 'amount') {
+        const num = Math.max(0, typeof value === 'number' ? value : parseFloat(String(value)) || 0);
+        next[index] = { ...next[index], amount: isExempt ? 0 : num };
+      } else if (field === 'notes') {
+        next[index] = { ...next[index], notes: String(value) };
+      }
+      onCommissionsChange && onCommissionsChange(next);
+      return next;
+    });
   };
 
   const generatePaymentId = () => {
@@ -963,6 +1045,60 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     );
   };
 
+  // Commissions section (excluded from PDF)
+  const renderCommissionsSection = () => {
+    if (!localCalculations || localCalculations.length === 0) return null;
+    const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+    const totalCommission = localCommissions.reduce((s, c) => s + (c?.amount || 0), 0);
+    return (
+      <div className="grand-summary-card" style={{ marginTop: '1rem' }}>
+        <div className="grand-summary-header">
+          <h3>Commissions (20% of services, not included in PDF)</h3>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Excludes travel fees. Exempt artists: Teresa, Lola, Miguel</p>
+        </div>
+        <div className="grand-summary-content">
+          {(localCommissions || []).map((entry, idx) => {
+            const isExempt = exemptSet.has((entry.artistName || '').toLowerCase());
+            return (
+              <div key={`${entry.artistName}-${entry.serviceType}`} className="summary-row" style={{ alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span className="summary-label" style={{ minWidth: 180 }}>{entry.artistName} — {entry.serviceType === 'makeup' ? 'Make-up' : 'Hair'}</span>
+                {isExempt ? (
+                  <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Exempt</span>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="currency" aria-hidden="true">€</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={entry.amount}
+                      onChange={(e) => updateCommission(idx, 'amount', e.target.value)}
+                      style={{ width: 120 }}
+                      aria-label={`Commission amount for ${entry.artistName}`}
+                      title="Auto-calculated as 20% of services (excluding travel). Edit to override."
+                    />
+                  </div>
+                )}
+                <input
+                  type="text"
+                  placeholder="Notes (optional)"
+                  value={entry.notes || ''}
+                  onChange={(e) => updateCommission(idx, 'notes', e.target.value)}
+                  style={{ flex: 1, minWidth: 220 }}
+                  aria-label={`Commission notes for ${entry.artistName}`}
+                />
+              </div>
+            );
+          })}
+          <div className="summary-row" style={{ borderTop: '1px solid #e5e7eb', paddingTop: 8, marginTop: 4 }}>
+            <span className="summary-label">TOTAL COMMISSIONS</span>
+            <span className="summary-amount grand-total">{formatCurrency(totalCommission)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const autoGeneratePriorityWarnings = (calc: CalculationResult): PriorityWarning[] => {
     const warnings: PriorityWarning[] = [];
     const serviceLabel = calc.serviceType === 'makeup' ? 'Make-up' : 'Hairstyling';
@@ -1561,6 +1697,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           </div>
         )}
       </div>
+
+      {renderCommissionsSection()}
 
       <div className="export-actions">
         <button type="button" onClick={copyRichText} className="btn btn-secondary">

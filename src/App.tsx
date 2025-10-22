@@ -25,7 +25,8 @@ export default function App() {
     updateGrandSummary,
     clearStorage,
     updateTrialSyncEnabled,
-    updateBeautyVenueSyncEnabled
+    updateBeautyVenueSyncEnabled,
+    updateCommissions
   } = useLocalStorage();
 
   const handleFormSubmit = () => {
@@ -96,6 +97,7 @@ export default function App() {
     // Apply calculations and summaries
     if (Array.isArray(loaded.calculations)) updateCalculations(loaded.calculations);
     if (loaded.grandSummary) updateGrandSummary(loaded.grandSummary as GrandSummary);
+    if (Array.isArray(loaded.commissions)) updateCommissions(loaded.commissions as any);
 
     // Apply sync flags
     updateTrialSyncEnabled(loaded.trialSyncEnabled ?? false);
@@ -174,6 +176,8 @@ export default function App() {
             getAppState={getAppStateSnapshot}
             applyLoadedAppState={applyLoadedAppState}
             appVersion={appState.version}
+            commissions={appState.commissions}
+            onCommissionsChange={updateCommissions}
           />
         );
       
