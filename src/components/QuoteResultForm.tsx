@@ -61,6 +61,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   // Ensure we have one commission entry per artist/service shown on screen
   // Auto-calculate 20% commission on eligible services (excluding travel fees)
   useEffect(() => {
+    if (!localCalculations || localCalculations.length === 0) return;
+    
     const exemptSet = new Set(['teresa', 'lola', 'miguel']);
     const fromCalcs: CommissionEntry[] = localCalculations.map(c => {
       const isExempt = exemptSet.has((c.artistName || '').toLowerCase());
@@ -110,8 +112,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       setLocalCommissions(fromCalcs);
       onCommissionsChange && onCommissionsChange(fromCalcs);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localCalculations]);
+  }, [localCalculations.length]);
 
   const updateCommission = (index: number, field: keyof CommissionEntry, value: string | number) => {
     setLocalCommissions(prev => {
