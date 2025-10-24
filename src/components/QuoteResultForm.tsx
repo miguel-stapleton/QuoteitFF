@@ -1114,7 +1114,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
       // Commission details for each artist
       let totalCommissions = 0;
-      (localCommissions || []).forEach((entry, idx) => {
+      (localCommissions || []).forEach((entry) => {
         const exemptSet = new Set(['teresa', 'lola', 'miguel']);
         const isExempt = exemptSet.has((entry.artistName || '').toLowerCase());
 
@@ -1140,7 +1140,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             const amount = `€${item.amount.toFixed(2)}`;
             const labelWidth = pageWidth - margin * 2 - 40;
             const labelLines = pdf.splitTextToSize(label, labelWidth);
-            labelLines.forEach((line, idx) => {
+            labelLines.forEach((line: string, idx: number) => {
               pdf.text(line, margin + 5, currentY);
               if (idx === labelLines.length - 1) {
                 pdf.text(amount, pageWidth - margin - 20, currentY, { align: 'right' });
@@ -1170,7 +1170,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           pdf.setFont('helvetica', 'italic');
           const notesLabel = `Notes: ${entry.notes}`;
           const notesLines = pdf.splitTextToSize(notesLabel, pageWidth - margin * 2 - 10);
-          notesLines.forEach(line => {
+          notesLines.forEach((line: string) => {
             pdf.text(line, margin + 5, currentY);
             currentY += lineHeight;
           });
