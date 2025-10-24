@@ -53,10 +53,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     }
   };
 
-  // Keep local commissions aligned with props
-  useEffect(() => {
-    setLocalCommissions(commissions || []);
-  }, [commissions]);
+
 
   // Ensure we have one commission entry per artist/service shown on screen
   // Auto-calculate 20% commission on eligible services (excluding travel fees)
