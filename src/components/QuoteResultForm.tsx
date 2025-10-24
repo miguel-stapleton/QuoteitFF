@@ -1043,6 +1043,164 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     );
   };
 
+  // Helper function to get commission breakdown for a specific artist/service
+  const getCommissionBreakdown = (artistName: string, serviceType: string) => {
+    const calc = localCalculations.find(c => c.artistName === artistName && c.serviceType === serviceType);
+    if (!calc) return { eligibleTotal: 0, commission: 0, breakdown: [] };
+
+    const breakdown: Array<{ date: string; label: string; amount: number }> = [];
+    let eligibleTotal = 0;
+
+    // Process day breakdowns
+    (calc.dayBreakdowns || []).forEach(day => {
+      day.lines.forEach(line => {
+        const label = (line.label || '').toLowerCase();
+        if (!label.includes('travel') && !label.includes('assistant')) {
+          breakdown.push({
+            date: formatDateForDisplay(day.date),
+            label: line.label,
+            amount: line.total
+          });
+          eligibleTotal += line.total;
+        }
+      });
+    });
+
+    // Process global lines (trials, etc.)
+    (calc.lines || []).forEach(line => {
+      const label = (line.label || '').toLowerCase();
+      if (!label.includes('travel') && !label.includes('assistant')) {
+        const isInDayBreakdowns = (calc.dayBreakdowns || []).some(d => 
+          d.lines.some(dl => dl.label === line.label && dl.total === line.total)
+        );
+        if (!isInDayBreakdowns) {
+          breakdown.push({
+            date: 'Pre-wedding',
+            label: line.label,
+            amount: line.total
+          });
+          eligibleTotal += line.total;
+        }
+      }
+    });
+
+    return {
+      eligibleTotal,
+      commission: eligibleTotal * 0.2,
+      breakdown
+    };
+  };
+
+  // Export commission summary as PDF
+  const exportCommissionSummaryPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      let currentY = margin;
+      const lineHeight = 5;
+
+      // Title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Commission Summary', pageWidth / 2, currentY, { align: 'center' });
+      currentY += 12;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, pageWidth / 2, currentY, { align: 'center' });
+      currentY += 10;
+
+      // Commission details for each artist
+      let totalCommissions = 0;
+      (localCommissions || []).forEach((entry, idx) => {
+        const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+        const isExempt = exemptSet.has((entry.artistName || '').toLowerCase());
+
+        // Artist header
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${entry.artistName} — ${entry.serviceType === 'makeup' ? 'Make-up' : 'Hair'}`, margin, currentY);
+        currentY += 7;
+
+        if (isExempt) {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'italic');
+          pdf.text('Exempt from commissions', margin + 5, currentY);
+          currentY += 8;
+        } else {
+          const breakdown = getCommissionBreakdown(entry.artistName, entry.serviceType);
+
+          // Line items
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          breakdown.breakdown.forEach(item => {
+            const label = `${item.date} — ${item.label}`;
+            const amount = `€${item.amount.toFixed(2)}`;
+            const labelWidth = pageWidth - margin * 2 - 40;
+            const labelLines = pdf.splitTextToSize(label, labelWidth);
+            labelLines.forEach((line, idx) => {
+              pdf.text(line, margin + 5, currentY);
+              if (idx === labelLines.length - 1) {
+                pdf.text(amount, pageWidth - margin - 20, currentY, { align: 'right' });
+              }
+              currentY += lineHeight;
+            });
+          });
+
+          // Eligible total
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Eligible Total:', margin + 5, currentY);
+          pdf.text(`€${breakdown.eligibleTotal.toFixed(2)}`, pageWidth - margin - 20, currentY, { align: 'right' });
+          currentY += 7;
+
+          // Commission (20%)
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Commission (20%):', margin + 5, currentY);
+          pdf.text(`€${breakdown.commission.toFixed(2)}`, pageWidth - margin - 20, currentY, { align: 'right' });
+          currentY += 7;
+          totalCommissions += breakdown.commission;
+        }
+
+        // Notes if any
+        if (entry.notes && entry.notes.trim()) {
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'italic');
+          const notesLabel = `Notes: ${entry.notes}`;
+          const notesLines = pdf.splitTextToSize(notesLabel, pageWidth - margin * 2 - 10);
+          notesLines.forEach(line => {
+            pdf.text(line, margin + 5, currentY);
+            currentY += lineHeight;
+          });
+        }
+
+        currentY += 5;
+
+        // Page break if needed
+        if (currentY > pageHeight - margin - 20) {
+          pdf.addPage();
+          currentY = margin;
+        }
+      });
+
+      // Total commissions at bottom
+      currentY += 5;
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TOTAL COMMISSIONS:', margin, currentY);
+      pdf.text(`€${totalCommissions.toFixed(2)}`, pageWidth - margin - 20, currentY, { align: 'right' });
+
+      // Download
+      pdf.save('commission-summary.pdf');
+      showNotice({ type: 'success', text: 'Commission summary PDF downloaded.' });
+    } catch (error) {
+      console.error('Error generating commission summary PDF:', error);
+      showNotice({ type: 'error', text: 'Failed to generate commission summary PDF.' });
+    }
+  };
+
   // Commissions section (excluded from PDF)
   const renderCommissionsSection = () => {
     if (!localCalculations || localCalculations.length === 0) return null;
@@ -1050,9 +1208,19 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     const totalCommission = localCommissions.reduce((s, c) => s + (c?.amount || 0), 0);
     return (
       <div className="grand-summary-card" style={{ marginTop: '1rem' }}>
-        <div className="grand-summary-header">
-          <h3>Commissions (20% of services, not included in PDF)</h3>
-          <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Excludes travel fees. Exempt artists: Teresa, Lola, Miguel</p>
+        <div className="grand-summary-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h3>Commissions (20% of services, not included in PDF)</h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Excludes travel fees. Exempt artists: Teresa, Lola, Miguel</p>
+          </div>
+          <button
+            type="button"
+            onClick={exportCommissionSummaryPDF}
+            className="btn btn-secondary"
+            style={{ whiteSpace: 'nowrap', marginLeft: '1rem' }}
+          >
+            Download Commission Summary PDF
+          </button>
         </div>
         <div className="grand-summary-content">
           {(localCommissions || []).map((entry, idx) => {
