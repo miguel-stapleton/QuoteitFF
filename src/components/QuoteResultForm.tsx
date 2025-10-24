@@ -109,7 +109,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       setLocalCommissions(fromCalcs);
       onCommissionsChange && onCommissionsChange(fromCalcs);
     }
-  }, [localCalculations.length]);
+  }, [localCalculations]);
 
   const updateCommission = (index: number, field: keyof CommissionEntry, value: string | number) => {
     setLocalCommissions(prev => {
