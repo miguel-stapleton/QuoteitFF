@@ -60,7 +60,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   useEffect(() => {
     if (!localCalculations || localCalculations.length === 0) return;
     
-    const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+    const exemptSet = new Set(['teresa', 'lola', 'miguel', 'inês']);
     const fromCalcs: CommissionEntry[] = localCalculations.map(c => {
       const isExempt = exemptSet.has((c.artistName || '').toLowerCase());
       const existing = (localCommissions || []).find(e => e.artistName === c.artistName && e.serviceType === c.serviceType);
@@ -114,7 +114,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   const updateCommission = (index: number, field: keyof CommissionEntry, value: string | number) => {
     setLocalCommissions(prev => {
       const next = [...prev];
-      const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+      const exemptSet = new Set(['teresa', 'lola', 'miguel', 'inês']);
       const isExempt = exemptSet.has((next[index]?.artistName || '').toLowerCase());
       if (field === 'amount') {
         const num = Math.max(0, typeof value === 'number' ? value : parseFloat(String(value)) || 0);
@@ -1115,7 +1115,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       // Commission details for each artist
       let totalCommissions = 0;
       (localCommissions || []).forEach((entry) => {
-        const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+        const exemptSet = new Set(['teresa', 'lola', 'miguel', 'inês']);
         const isExempt = exemptSet.has((entry.artistName || '').toLowerCase());
 
         // Artist header
@@ -1204,14 +1204,14 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   // Commissions section (excluded from PDF)
   const renderCommissionsSection = () => {
     if (!localCalculations || localCalculations.length === 0) return null;
-    const exemptSet = new Set(['teresa', 'lola', 'miguel']);
+    const exemptSet = new Set(['teresa', 'lola', 'miguel', 'inês']);
     const totalCommission = localCommissions.reduce((s, c) => s + (c?.amount || 0), 0);
     return (
       <div className="grand-summary-card" style={{ marginTop: '1rem' }}>
         <div className="grand-summary-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h3>Commissions (20% of services, not included in PDF)</h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Excludes travel fees. Exempt artists: Teresa, Lola, Miguel</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Excludes travel fees. Exempt artists: Teresa, Lola, Miguel, Inês</p>
           </div>
           <button
             type="button"
