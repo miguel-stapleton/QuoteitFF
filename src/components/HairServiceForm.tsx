@@ -271,7 +271,8 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
       {/* Per-day sections */}
       {dates.map((date, idx) => {
         const day = hairForm.perDay[idx] || defaultDay();
-        const dateLabel = idx === 0 ? 'Wedding Day' : `Day ${idx + 1}`;
+        const dayLabelText = day.dayLabel ? `Day ${idx + 1} (${day.dayLabel})` : (idx === 0 ? 'Wedding Day' : `Day ${idx + 1}`);
+        const dateLabel = dayLabelText;
 
         const onBeautyVenueChange = (val: string) => {
           updatePerDay(idx, { beautyVenue: val });
@@ -341,6 +342,20 @@ export const HairServiceForm: React.FC<HairServiceFormProps> = ({
                 )}
               </div>
             )}
+
+            <div className="input-group">
+              <label htmlFor={`hair-day-label-${idx}`} className="input-label">
+                Day label <span style={{ fontWeight: 400, color: '#6b7280' }}>(optional — e.g. "Pre-wedding event")</span>
+              </label>
+              <input
+                type="text"
+                id={`hair-day-label-${idx}`}
+                className="input-field"
+                placeholder="e.g., Pre-wedding event"
+                value={day.dayLabel || ''}
+                onChange={(e) => updatePerDay(idx, { dayLabel: e.target.value || undefined })}
+              />
+            </div>
 
             <div className="input-group">
               <label htmlFor={`hair-beauty-venue-${idx}`} className="input-label">

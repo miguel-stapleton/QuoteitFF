@@ -17,6 +17,8 @@ const createDefaultAppState = (): AppState => ({
   calculations: [],
   grandSummary: { grandTotal: 0, totalPaid: 0, totalDue: 0 },
   lastUpdated: new Date().toISOString(),
+  ivaEnabled: false,
+  ivaRate: 0.23,
   trialSyncEnabled: false,
   beautyVenueSyncEnabled: [],
   commissions: []
@@ -183,6 +185,10 @@ export const useLocalStorage = () => {
     setAppState(prev => ({ ...prev, commissions }));
   };
 
+  const updateIva = (ivaEnabled: boolean, ivaRate: number) => {
+    setAppState(prev => ({ ...prev, ivaEnabled, ivaRate }));
+  };
+
   const resetAppState = () => {
     setAppState(createDefaultAppState());
   };
@@ -205,6 +211,7 @@ export const useLocalStorage = () => {
     updateTrialSyncEnabled,
     updateBeautyVenueSyncEnabled,
     updateCommissions,
+    updateIva,
     resetAppState,
     clearStorage
   };

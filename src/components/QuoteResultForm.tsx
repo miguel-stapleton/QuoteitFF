@@ -351,6 +351,14 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   };
 
   const venueByDate = computeVenueByDate(localCalculations);
+  // Returns "Day N" or "Day N (label)" prefix for a per-day section header.
+  // Keeps PRE-WEDDING and the event day titled "Day 1 (Pre-wedding event)" separate.
+  const formatDayHeader = (day: { date: string; venue?: string; label?: string }, dayIndex: number): string => {
+    const prefix = `Day ${dayIndex + 1}${day.label ? ` (${day.label})` : ''}`;
+    const dateWithVenue = formatDateWithVenue(day.date, day.venue);
+    return `${prefix} — ${dateWithVenue}`;
+  };
+
   const formatDateWithVenue = (dateStr: string, venue?: string) => {
     const d = formatDateForDisplay(dateStr);
     const v = venue && venue.trim() ? venue.trim() : (venueByDate[dateStr] || '').trim();
@@ -388,7 +396,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           </table>
         </div>` : '';
 
-      const perDayHTML = (calc.dayBreakdowns || []).map(day => {
+      const perDayHTML = (calc.dayBreakdowns || []).map((day, dIdx) => {
         const linesHTML = day.lines.map(line => `
           <tr style=\"border-bottom: 1px solid #e5e7eb;\">
             <td style=\"padding: 8px 12px; text-align: left;\">${line.meta ? `${line.label} (${line.meta})` : line.label}</td>
@@ -397,7 +405,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           </tr>`).join('');
         return `
           <div style=\"padding: 12px 24px;\">
-            <h4 style=\"margin: 0 0 8px 0; font-weight: 600; color: #374151;\">${formatDateWithVenue(day.date, day.venue)}</h4>
+            <h4 style=\"margin: 0 0 8px 0; font-weight: 600; color: #374151;\">${formatDayHeader(day, dIdx)}</h4>
             <table style=\"width: 100%; border-collapse: collapse;\">
               <thead>
                 <tr style=\"background: #f3f4f6;\">
@@ -490,9 +498,18 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         <table style="width: 100%; border-collapse: collapse;">
           <tbody>
             <tr>
-              <td style="padding: 16px 24px; font-weight: 700; color: #1f2937; font-size: 16px;">GRAND TOTAL</td>
+              <td style="padding: 16px 24px; font-weight: 700; color: #1f2937; font-size: 16px;">${grandSummary.ivaAmount != null ? 'SUBTOTAL (excl. IVA)' : 'GRAND TOTAL'}</td>
               <td style="padding: 16px 24px; text-align: right; font-family: monospace; font-weight: 700; color: #1f2937; font-size: 18px;">€${grandSummary.grandTotal.toFixed(2)}</td>
             </tr>
+            ${grandSummary.ivaAmount != null ? `
+            <tr style="border-top: 1px solid #d1d5db;">
+              <td style="padding: 12px 24px; font-weight: 600; color: #6b7280;">IVA (${Math.round((grandSummary.ivaRate || 0) * 100)}%)</td>
+              <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 600; color: #6b7280;">€${grandSummary.ivaAmount.toFixed(2)}</td>
+            </tr>
+            <tr style="border-top: 1px solid #d1d5db;">
+              <td style="padding: 12px 24px; font-weight: 700; color: #1f2937; font-size: 16px;">TOTAL (incl. IVA)</td>
+              <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 700; color: #1f2937; font-size: 18px;">€${grandSummary.totalInclIva!.toFixed(2)}</td>
+            </tr>` : ''}
             <tr style="border-top: 1px solid #d1d5db;">
               <td style="padding: 12px 24px; font-weight: 600; color: #059669;">TOTAL PAID</td>
               <td style="padding: 12px 24px; text-align: right; font-family: monospace; font-weight: 600; color: #059669;">€${grandSummary.totalPaid.toFixed(2)}</td>
@@ -593,8 +610,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       }
 
       // Per-day breakdowns
-      (calc.dayBreakdowns || []).forEach(day => {
-        content += `${formatDateWithVenue(day.date)}\n`;
+      (calc.dayBreakdowns || []).forEach((day, dIdx) => {
+        content += `${formatDayHeader(day, dIdx)}\n`;
         content += formatLine('SERVICE', 'CALCULATION', 'TOTAL') + '\n';
         content += lineSeparator + '\n';
         day.lines.forEach(line => {
@@ -640,7 +657,11 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       content += separator + '\n';
       content += 'GRAND SUMMARY\n';
       content += lineSeparator + '\n';
-      content += formatLine('GRAND TOTAL', '', `€${grandSummary.grandTotal.toFixed(2)}`) + '\n';
+      content += formatLine(grandSummary.ivaAmount != null ? 'SUBTOTAL (excl. IVA)' : 'GRAND TOTAL', '', `€${grandSummary.grandTotal.toFixed(2)}`) + '\n';
+      if (grandSummary.ivaAmount != null) {
+        content += formatLine(`IVA (${Math.round((grandSummary.ivaRate || 0) * 100)}%)`, '', `€${grandSummary.ivaAmount.toFixed(2)}`) + '\n';
+        content += formatLine('TOTAL (incl. IVA)', '', `€${grandSummary.totalInclIva!.toFixed(2)}`) + '\n';
+      }
       content += formatLine('TOTAL PAID', '', `€${grandSummary.totalPaid.toFixed(2)}`) + '\n';
       content += formatLine('TOTAL DUE', '', `€${grandSummary.totalDue.toFixed(2)}`) + '\n';
     }
@@ -793,7 +814,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(11);
-          pdf.text(formatDateWithVenue(day.date), margin, currentY);
+          pdf.text(formatDayHeader(day, dayIndex), margin, currentY);
           currentY += 6;
           pdf.setFontSize(9);
           pdf.text('SERVICE', colLabelX, currentY);
@@ -947,9 +968,17 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         currentY += sectionSpacing;
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        pdf.text('GRAND TOTAL', margin, currentY);
+        pdf.text(grandSummary.ivaAmount != null ? 'SUBTOTAL (excl. IVA)' : 'GRAND TOTAL', margin, currentY);
         pdf.text(`€${grandSummary.grandTotal.toFixed(2)}`, margin + 140, currentY);
         currentY += lineHeight;
+        if (grandSummary.ivaAmount != null) {
+          pdf.text(`IVA (${Math.round((grandSummary.ivaRate || 0) * 100)}%)`, margin, currentY);
+          pdf.text(`€${grandSummary.ivaAmount.toFixed(2)}`, margin + 140, currentY);
+          currentY += lineHeight;
+          pdf.text('TOTAL (incl. IVA)', margin, currentY);
+          pdf.text(`€${grandSummary.totalInclIva!.toFixed(2)}`, margin + 140, currentY);
+          currentY += lineHeight;
+        }
         pdf.text('TOTAL PAID', margin, currentY);
         pdf.text(`€${grandSummary.totalPaid.toFixed(2)}`, margin + 140, currentY);
         currentY += lineHeight;
@@ -1631,7 +1660,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
               <div key={dIdx} className="quote-table-container" style={{ marginTop: '0.5rem' }}>
                 <div className="artist-header" style={{ padding: '0.5rem 0' }}>
                   <div className="artist-info">
-                    <h4 style={{ margin: 0 }}>{day.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(day.date, day.venue)}</h4>
+                    <h4 style={{ margin: 0 }}>{day.date === 'Pre-wedding' ? 'Pre-wedding' : formatDayHeader(day, dIdx)}</h4>
                   </div>
                 </div>
                 <table className="quote-table">
@@ -1848,9 +1877,21 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
             </div>
             <div className="grand-summary-content">
               <div className="summary-row">
-                <span className="summary-label">GRAND TOTAL</span>
+                <span className="summary-label">{grandSummary.ivaAmount != null ? 'SUBTOTAL (excl. IVA)' : 'GRAND TOTAL'}</span>
                 <span className="summary-amount grand-total">{formatCurrency(grandSummary.grandTotal)}</span>
               </div>
+              {grandSummary.ivaAmount != null && (
+                <>
+                  <div className="summary-row">
+                    <span className="summary-label" style={{ color: '#6b7280' }}>IVA ({Math.round((grandSummary.ivaRate || 0) * 100)}%)</span>
+                    <span className="summary-amount" style={{ color: '#6b7280' }}>{formatCurrency(grandSummary.ivaAmount)}</span>
+                  </div>
+                  <div className="summary-row">
+                    <span className="summary-label">TOTAL (incl. IVA)</span>
+                    <span className="summary-amount grand-total">{formatCurrency(grandSummary.totalInclIva!)}</span>
+                  </div>
+                </>
+              )}
               <div className="summary-row">
                 <span className="summary-label">TOTAL PAID</span>
                 <span className="summary-amount paid-total">{formatCurrency(grandSummary.totalPaid)}</span>

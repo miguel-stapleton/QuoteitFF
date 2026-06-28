@@ -263,7 +263,8 @@ export const MakeupServiceForm: React.FC<MakeupServiceFormProps> = ({
       {/* Per-day sections */}
       {dates.map((date, idx) => {
         const day = makeupForm.perDay[idx] || defaultDay();
-        const dateLabel = idx === 0 ? 'Wedding Day' : `Day ${idx + 1}`;
+        const dayLabelText = day.dayLabel ? `Day ${idx + 1} (${day.dayLabel})` : (idx === 0 ? 'Wedding Day' : `Day ${idx + 1}`);
+        const dateLabel = dayLabelText;
 
         // Debounced beauty venue mirroring
         const onBeautyVenueChange = (val: string) => {
@@ -308,6 +309,20 @@ export const MakeupServiceForm: React.FC<MakeupServiceFormProps> = ({
             <div className="header">
               <h4 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{dateLabel}{date ? ` — ${new Date(date).toLocaleDateString('en-GB')}` : ''}</h4>
               <p>Provide details for this day</p>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor={`makeup-day-label-${idx}`} className="form-label">
+                Day label <span style={{ fontWeight: 400, color: '#6b7280' }}>(optional — e.g. "Pre-wedding event")</span>
+              </label>
+              <input
+                id={`makeup-day-label-${idx}`}
+                type="text"
+                value={day.dayLabel || ''}
+                onChange={(e) => updatePerDay(idx, { dayLabel: e.target.value || undefined })}
+                className="input-field"
+                placeholder={`e.g., Pre-wedding event`}
+              />
             </div>
 
             <div className="form-group">

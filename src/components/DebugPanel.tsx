@@ -133,6 +133,96 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ onLoadScenario }) => {
           ]
         } as MakeupForm
       }
+    },
+
+    overnightAdjacentMakeup: {
+      name: 'Overnight rule — 3 adjacent days @ €490 (Make-up)',
+      description: 'Days 1/2/3 all consecutive, travel €490 → expect Day 1 = €490, Days 2 & 3 = €200 each (overnight rate).',
+      data: {
+        serviceChoice: { makeup: true, hair: false },
+        multiDay: {
+          hasMultipleDays: true,
+          count: 3,
+          dates: [
+            toISO(new Date(today.getTime() + 0 * 86_400_000)),
+            toISO(new Date(today.getTime() + 1 * 86_400_000)),
+            toISO(new Date(today.getTime() + 2 * 86_400_000))
+          ],
+          brideName: 'QA Bride'
+        },
+        makeupForm: {
+          artist: MakeupArtist.Lola,
+          trials: 0,
+          trialTravelEnabled: false,
+          trialVenue: '',
+          trialTravelFee: 0,
+          perDay: [
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 490, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Évora' },
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 490, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Évora' },
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 490, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Évora' }
+          ]
+        } as MakeupForm
+      }
+    },
+
+    overnightNonAdjacentMakeup: {
+      name: 'Overnight rule — 3 non-adjacent days @ €490 (Make-up)',
+      description: 'Days 1, 3, 5 (gaps between each), travel €490 → expect all 3 days at full €490 (no overnight discount).',
+      data: {
+        serviceChoice: { makeup: true, hair: false },
+        multiDay: {
+          hasMultipleDays: true,
+          count: 3,
+          dates: [
+            toISO(new Date(today.getTime() + 0 * 86_400_000)),
+            toISO(new Date(today.getTime() + 2 * 86_400_000)),
+            toISO(new Date(today.getTime() + 4 * 86_400_000))
+          ],
+          brideName: 'QA Bride'
+        },
+        makeupForm: {
+          artist: MakeupArtist.Lola,
+          trials: 0,
+          trialTravelEnabled: false,
+          trialVenue: '',
+          trialTravelFee: 0,
+          perDay: [
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 490, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Évora' },
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 490, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Évora' },
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 490, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Évora' }
+          ]
+        } as MakeupForm
+      }
+    },
+
+    overnightBelowThresholdMakeup: {
+      name: 'Overnight rule — 3 adjacent days @ €120 (Make-up)',
+      description: 'Travel fee €120 is below the €150 threshold → no overnight rule, all 3 days stay at €120.',
+      data: {
+        serviceChoice: { makeup: true, hair: false },
+        multiDay: {
+          hasMultipleDays: true,
+          count: 3,
+          dates: [
+            toISO(new Date(today.getTime() + 0 * 86_400_000)),
+            toISO(new Date(today.getTime() + 1 * 86_400_000)),
+            toISO(new Date(today.getTime() + 2 * 86_400_000))
+          ],
+          brideName: 'QA Bride'
+        },
+        makeupForm: {
+          artist: MakeupArtist.Lola,
+          trials: 0,
+          trialTravelEnabled: false,
+          trialVenue: '',
+          trialTravelFee: 0,
+          perDay: [
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 120, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Setúbal' },
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 120, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Setúbal' },
+            { scheduledReturn: false, scheduledReturnBride: false, scheduledReturnGuests: 0, guests: 0, travelFee: 120, numPeople: 1, numCars: 1, exclusivity: false, touchupHours: 0, beautyVenue: 'Setúbal' }
+          ]
+        } as MakeupForm
+      }
     }
   };
 

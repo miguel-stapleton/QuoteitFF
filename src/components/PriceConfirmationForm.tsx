@@ -16,7 +16,10 @@ interface PriceConfirmationFormProps {
   onCustomPricesChange: (prices: DefaultPrices) => void;
   onCalculationsUpdate: (calculations: any, grandSummary: any) => void;
   onConfirm: () => void;
-  existingCalculations?: any[] // Add existing calculations to preserve payments
+  existingCalculations?: any[];
+  ivaEnabled: boolean;
+  ivaRate: number;
+  onIvaChange: (enabled: boolean) => void;
 }
 
 export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
@@ -31,7 +34,10 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
   onCustomPricesChange,
   onCalculationsUpdate,
   onConfirm,
-  existingCalculations
+  existingCalculations,
+  ivaEnabled,
+  ivaRate,
+  onIvaChange
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [agneFlatRateCustom, setAgneFlatRateCustom] = useState({
@@ -93,14 +99,16 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
 
   const updateCalculations = (_mode: PriceMode, prices: DefaultPrices) => {
     const weddingDates = multiDay.dates.filter(date => date !== '').slice(0, multiDay.count || 1);
-    
+
     const calculationResult = calculateQuote({
       serviceChoice,
       makeupForm,
       hairForm,
       prices,
       weddingDates,
-      existingCalculations // Add existing calculations to preserve payments
+      existingCalculations,
+      ivaEnabled,
+      ivaRate
     });
 
     onCalculationsUpdate(calculationResult.calculations, calculationResult.grandSummary);
@@ -109,14 +117,16 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
   const handleConfirm = () => {
     // Calculate quotes with current pricing
     const weddingDates = multiDay.dates.filter(date => date !== '').slice(0, multiDay.count || 1);
-    
+
     const calculationResult = calculateQuote({
       serviceChoice,
       makeupForm,
       hairForm,
       prices: currentPrices,
       weddingDates,
-      existingCalculations // Add existing calculations to preserve payments
+      existingCalculations,
+      ivaEnabled,
+      ivaRate
     });
 
     // Update calculations in app state
@@ -732,6 +742,29 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
               )
             )}
           </div>
+        )}
+      </div>
+
+      <div className="price-summary-card" style={{ marginTop: '1rem' }}>
+        <div className="price-mode-indicator">
+          <span className="price-mode-badge">IVA</span>
+        </div>
+        <div className="price-item" style={{ alignItems: 'center', gap: '1rem', padding: '0.5rem 0' }}>
+          <label htmlFor="iva-toggle" className="price-label" style={{ marginBottom: 0 }}>
+            Apply IVA (23%) to grand total
+          </label>
+          <input
+            id="iva-toggle"
+            type="checkbox"
+            checked={ivaEnabled}
+            onChange={(e) => onIvaChange(e.target.checked)}
+            style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+          />
+        </div>
+        {ivaEnabled && (
+          <p className="price-help" style={{ margin: '0.25rem 0 0.5rem' }}>
+            IVA (23%) will be shown as a separate line after the grand total.
+          </p>
         )}
       </div>
 

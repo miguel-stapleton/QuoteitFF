@@ -235,6 +235,59 @@ export const hairArtistPrices: Record<HairArtist, ServicePricing> = {
   }
 };
 
+// Minimum guests by distance — §6a
+export interface MinGuestBands { bandA: number; bandB: number }
+
+export const makeupMinGuests: Record<MakeupArtist, MinGuestBands> = {
+  [MakeupArtist.Lola]:     { bandA: 3, bandB: 2 },
+  [MakeupArtist.Teresa]:   { bandA: 3, bandB: 2 },
+  [MakeupArtist.Miguel]:   { bandA: 3, bandB: 2 },
+  [MakeupArtist.Inês]:     { bandA: 3, bandB: 2 },
+  [MakeupArtist.AnaNeves]: { bandA: 3, bandB: 2 },
+  [MakeupArtist.AnaRoma]:  { bandA: 3, bandB: 2 },
+  [MakeupArtist.Sara]:     { bandA: 3, bandB: 3 },
+  [MakeupArtist.Sofia]:    { bandA: 3, bandB: 2 },
+  [MakeupArtist.Rita]:     { bandA: 3, bandB: 2 },
+  [MakeupArtist.Filipa]:   { bandA: 3, bandB: 2 },
+};
+
+export const hairMinGuests: Record<HairArtist, MinGuestBands> = {
+  [HairArtist.Agne]:    { bandA: 3, bandB: 2 },
+  [HairArtist.Eric]:    { bandA: 3, bandB: 2 },
+  [HairArtist.Joana]:   { bandA: 3, bandB: 2 },
+  [HairArtist.Oksana]:  { bandA: 3, bandB: 2 },
+  [HairArtist.OlgaH]:   { bandA: 3, bandB: 2 },
+  [HairArtist.Andreia]: { bandA: 4, bandB: 2 },
+  [HairArtist['Lília']]: { bandA: 4, bandB: 3 },
+};
+
+// Band thresholds
+// Make-up: fee > 99 → A; fee > 25 → B; else none
+// Hair:    fee > 99 → A; fee > 9  → B; else none
+export function getMinimumGuests(
+  service: 'makeup' | 'hair',
+  artist: string,
+  fullTravelFee: number
+): number {
+  if (service === 'makeup') {
+    const bands = makeupMinGuests[artist as MakeupArtist];
+    if (!bands) return 0;
+    if (fullTravelFee > 99) return bands.bandA;
+    if (fullTravelFee > 25) return bands.bandB;
+    return 0;
+  } else {
+    const bands = hairMinGuests[artist as HairArtist];
+    if (!bands) return 0;
+    if (fullTravelFee > 99) return bands.bandA;
+    if (fullTravelFee > 9)  return bands.bandB;
+    return 0;
+  }
+}
+
+// Overnight travel rule constants (§3a)
+export const OVERNIGHT_TRAVEL_THRESHOLD = 150; // fee must exceed this to qualify
+export const OVERNIGHT_TRAVEL_FEE = 200; // flat fee charged on adjacent days after the first
+
 // Agne's Flat Rate Pricing Structure
 export const agneFlatRate = {
   baseRate: 1400,

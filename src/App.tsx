@@ -26,7 +26,8 @@ export default function App() {
     clearStorage,
     updateTrialSyncEnabled,
     updateBeautyVenueSyncEnabled,
-    updateCommissions
+    updateCommissions,
+    updateIva
   } = useLocalStorage();
 
   const handleFormSubmit = () => {
@@ -148,6 +149,9 @@ export default function App() {
               updateGrandSummary(grandSummary);
             }}
             onConfirm={handlePriceConfirmation}
+            ivaEnabled={appState.ivaEnabled}
+            ivaRate={appState.ivaRate}
+            onIvaChange={(enabled) => updateIva(enabled, appState.ivaRate)}
           />
         );
       
@@ -160,12 +164,17 @@ export default function App() {
             onPaymentUpdate={(updatedCalculations) => {
               updateCalculations(updatedCalculations);
               // Recalculate grand summary with updated payments
+              const grandTotal = appState.grandSummary.grandTotal;
               const totalPaid = updatedCalculations.reduce((sum, calc) => sum + calc.totalPaid, 0);
               const totalDue = updatedCalculations.reduce((sum, calc) => sum + calc.due, 0);
+              const ivaEnabled = appState.ivaEnabled;
+              const ivaRate = appState.ivaRate;
+              const ivaAmount = ivaEnabled ? grandTotal * ivaRate : undefined;
               updateGrandSummary({
-                grandTotal: appState.grandSummary.grandTotal,
+                grandTotal,
                 totalPaid,
-                totalDue
+                totalDue,
+                ...(ivaEnabled ? { ivaRate, ivaAmount, totalInclIva: grandTotal + ivaAmount! } : {})
               });
             }}
             onStartOver={handleStartOver}

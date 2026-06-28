@@ -47,6 +47,7 @@ export interface MakeupDayDetails {
   exclusivity: boolean;
   touchupHours: number;
   beautyVenue?: string;
+  dayLabel?: string; // optional free-text label, e.g. "Pre-wedding event"
 }
 
 export interface HairDayDetails {
@@ -60,6 +61,7 @@ export interface HairDayDetails {
   exclusivity: boolean;
   touchupHours: number;
   beautyVenue?: string;
+  dayLabel?: string; // optional free-text label, e.g. "Pre-wedding event"
 }
 
 // Form Types
@@ -130,6 +132,7 @@ export interface DayBreakdown {
   lines: CalculationLine[];
   subtotal: number;
   venue?: string;
+  label?: string; // optional day label, e.g. "Pre-wedding event"
 }
 
 export interface CalculationResult {
@@ -152,6 +155,9 @@ export interface GrandSummary {
   grandTotal: number;
   totalPaid: number;
   totalDue: number;
+  ivaRate?: number;    // e.g. 0.23
+  ivaAmount?: number;
+  totalInclIva?: number;
 }
 
 // Commissions (UI-only, excluded from PDF)
@@ -178,6 +184,9 @@ export interface AppState {
   // Cross-fill sync flags
   trialSyncEnabled?: boolean; // when both services selected, mirrors trialVenue bi-directionally
   beautyVenueSyncEnabled?: boolean[]; // per-day flags, mirrors beautyVenue per day
+  // IVA setting (applies to grand total)
+  ivaEnabled: boolean;
+  ivaRate: number; // e.g. 0.23 for 23%
   // UI-only: per-artist commissions (not exported to PDF)
   commissions?: CommissionEntry[];
 }
