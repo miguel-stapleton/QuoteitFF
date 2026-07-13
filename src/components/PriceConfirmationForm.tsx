@@ -115,8 +115,31 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
   };
 
   const handleConfirm = () => {
-    // Calculate quotes with current pricing
+    // Validate: all days must have a travel fee if any day has one
     const weddingDates = multiDay.dates.filter(date => date !== '').slice(0, multiDay.count || 1);
+    if (weddingDates.length > 1) {
+      const missingTravel: string[] = [];
+      if (serviceChoice.makeup && makeupForm) {
+        makeupForm.perDay.forEach((day, i) => {
+          if ((day.travelFee ?? 0) === 0 && makeupForm.perDay.some(d => (d.travelFee ?? 0) > 0)) {
+            missingTravel.push(`Make-up Day ${i + 1} (${weddingDates[i] || `day ${i + 1}`})`);
+          }
+        });
+      }
+      if (serviceChoice.hair && hairForm) {
+        hairForm.perDay.forEach((day, i) => {
+          if ((day.travelFee ?? 0) === 0 && hairForm.perDay.some(d => (d.travelFee ?? 0) > 0)) {
+            missingTravel.push(`Hair Day ${i + 1} (${weddingDates[i] || `day ${i + 1}`})`);
+          }
+        });
+      }
+      if (missingTravel.length > 0) {
+        alert(`Please fill in the travel fee for all days before confirming:\n\n${missingTravel.join('\n')}`);
+        return;
+      }
+    }
+
+    // Calculate quotes with current pricing
 
     const calculationResult = calculateQuote({
       serviceChoice,

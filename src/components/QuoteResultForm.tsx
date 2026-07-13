@@ -900,7 +900,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     pdf.text(`${makeupCalc.artistName} - Make-up`, margin, y);
     y += 7;
 
-    const globalLines2 = makeupCalc.lines.filter(l => !makeupCalc.dayBreakdowns.some(db => db.lines.includes(l)));
+    const globalLines2 = extractGlobalLines(makeupCalc);
     if (globalLines2.length > 0) {
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
