@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, HairForm, PriorityWarning, CommissionEntry } from '../types';
+import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, HairForm, PriorityWarning, CommissionEntry, MakeupArtist } from '../types';
 import jsPDF from 'jspdf';
 import { QuotesAPI } from '../api/quotes';
+import { makeupArtistPrices } from '../data/services';
 
 interface QuoteResultFormProps {
   calculations: CalculationResult[];
@@ -667,6 +668,280 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     }
 
     return content;
+  };
+
+  const downloadMakeupContract = async () => {
+    const makeupCalc = localCalculations.find(c => c.serviceType === 'makeup');
+    if (!makeupCalc || !makeupForm) return;
+
+    const artistName = makeupCalc.artistName;
+    const artistPrices = makeupArtistPrices[artistName as MakeupArtist];
+    if (!artistPrices) return;
+
+    const ordinal = (n: number) => {
+      const s = ['th', 'st', 'nd', 'rd'];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+    const formatContractDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr + 'T12:00:00');
+      const month = d.toLocaleString('en-US', { month: 'long' });
+      return `${month} ${ordinal(d.getDate())}, ${d.getFullYear()}`;
+    };
+
+    const dates = makeupCalc.dayBreakdowns.map(db => db.date);
+    let weddingDatesStr: string;
+    if (dates.length <= 1) {
+      weddingDatesStr = formatContractDate(dates[0] || '');
+    } else if (dates.length === 2) {
+      weddingDatesStr = `${formatContractDate(dates[0])} and ${formatContractDate(dates[1])}`;
+    } else {
+      const allButLast = dates.slice(0, -1).map(formatContractDate).join(', ');
+      weddingDatesStr = `${allButLast}, and ${formatContractDate(dates[dates.length - 1])}`;
+    }
+
+    const venue = makeupCalc.dayBreakdowns[0]?.venue || makeupForm.perDay[0]?.beautyVenue || '';
+    const trialPrice = artistPrices.trialUnit;
+    const mainPrice = artistPrices.bridalUnit;
+    const guestPrice = artistPrices.guestUnit;
+    const returnPrice = artistPrices.scheduledReturnBride;
+    const touchupHourly = artistPrices.touchupHourly;
+    const depositAmount = mainPrice * 0.5;
+
+    const day0Lines = makeupCalc.dayBreakdowns[0]?.lines || [];
+    const travelLine = day0Lines.find(l => l.label?.toLowerCase().includes('travel'));
+    const travelFee = travelLine?.total ?? makeupForm.perDay[0]?.travelFee ?? 0;
+
+    const mainDepositPayment = makeupCalc.payments.find(p =>
+      p.occasion?.toLowerCase().includes('main') && p.occasion?.toLowerCase().includes('deposit')
+    );
+
+    const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const textWidth = pageWidth - margin * 2;
+    let y = margin;
+    const lh = 5.5;
+
+    const sanitizeC = (s: string) => (s || '')
+      .replace(/[×✕✖]/g, 'x')
+      .replace(/[−–—]/g, '-')
+      .replace(/['']/g, "'")
+      .replace(/[""]/g, '"')
+      .replace(/•/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const checkPage = (needed = 15) => {
+      if (y + needed > pageHeight - margin) { pdf.addPage(); y = margin; }
+    };
+
+    const writeText = (text: string, fontSize = 10, bold = false, indent = 0) => {
+      pdf.setFontSize(fontSize);
+      pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+      const lines = pdf.splitTextToSize(sanitizeC(text), textWidth - indent);
+      lines.forEach((line: string) => {
+        checkPage(lh + 2);
+        pdf.text(line, margin + indent, y);
+        y += lh;
+      });
+    };
+
+    const writePara = (text: string, indent = 0) => { writeText(text, 10, false, indent); y += 2; };
+    const writeSection = (text: string) => { y += 3; checkPage(12); writeText(text, 11, true); y += 1; };
+
+    // Logo
+    try {
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => { logoImg.onload = resolve; logoImg.onerror = reject; logoImg.src = '/logo.jpg'; });
+      const maxLogoWidth = 50;
+      const ar = (logoImg as HTMLImageElement).height / (logoImg as HTMLImageElement).width;
+      const lw = Math.min(maxLogoWidth, (logoImg as HTMLImageElement).width * 0.264583);
+      pdf.addImage(logoImg as HTMLImageElement, 'JPEG', (pageWidth - lw) / 2, y, lw, lw * ar);
+      y += lw * ar + 5;
+    } catch { y += 5; }
+
+    pdf.setFontSize(15);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('BRIDAL MAKE-UP SERVICE AGREEMENT', pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    writePara(`This agreement is made between ${artistName}, who is a make-up artist working on behalf of Fresh Faced, a collective of professional make-up artists based in Portugal, and the client ${brideName || '[Client Name]'}, for the provision of bridal beauty services on ${weddingDatesStr} taking place at ${venue || '[Venue]'}.`);
+
+    writeSection('1. SERVICES PROVIDED');
+    writePara('The make-up artist agrees to provide the following beauty services:');
+    writePara(`Bridal Make-up Trial (optional) - €${trialPrice} (must be held in Lisbon)`, 5);
+    writePara(`Bridal Make-up on the Wedding Day - €${mainPrice}`, 5);
+    writePara(`Guest Make-up Services (if applicable) - €${guestPrice} per guest to be made up in the same preparation area as the bride, taking care of a maximum of 4 guests.`, 5);
+    writePara(`Scheduled Return for Make-up Change/Touch-up (Second Look, if applicable) - €${returnPrice}`, 5);
+    writePara(`Standby for Touch-ups (if applicable) - €${touchupHourly} per hour from the moment the artist finishes completing make-up on the bride and all guests (no more than 20 minutes between guests) until the moment the artist leaves.`, 5);
+    writePara(`Exclusivity Fee (if applicable) - €100. Exclusivity on a day that has already been booked by paying a €100 deposit is guaranteed until 30 days before the wedding date, up to which a time slot for the make-up artist's services must be defined. From this moment on, the make-up artist is free to allow bookings for other jobs that do not interfere with the agreed upon time slot. By paying an exclusivity fee, this freedom is revoked from the make-up artist, and all other bookings for the booked day will be rejected for this date until the last moment.`, 5);
+    writePara(`Traveling fee: To ${venue || '[Venue]'}, a traveling fee of €${travelFee} will be charged for ${artistName} alone.`, 5);
+
+    writeSection('2. BOOKING AND DEPOSIT');
+    writePara(`A €${depositAmount.toFixed(0)} non-refundable deposit of the bridal make-up service fee is required to secure the booking of each day. The value for the trial is to be paid on the trial day.`);
+    writePara('The remaining balance is to be paid in cash on the wedding day.');
+    writePara('Payment of the deposit constitutes agreement to these terms.');
+
+    writeSection('3. TRIAL MAKE-UP');
+    writePara('Trials take up to 3 hours.');
+    writePara('Any additional trials are charged separately.');
+    writePara('The trial does not secure the wedding date, only a deposit does.');
+
+    writeSection('4. CANCELLATION POLICY');
+    writePara('The deposit is non-refundable.');
+    writePara('If the client cancels the booking after paying the deposit, no refunds will be issued.');
+    writePara('Date changes may be accommodated only in cases of official travel or event bans and must be communicated at least one month in advance.');
+
+    writeSection('5. GUEST SERVICES & ADDITIONAL ARTISTS');
+    writePara('Each guest make-up service takes approximately 60 minutes.');
+    writePara(`If additional make-up artists are required, a €${guestPrice} non-refundable deposit per extra artist must be paid.`);
+    writePara(`Additional artists can only be booked if at least three guests per extra artist are guaranteed. The client is entitled to an extra artist if there are 5 guests or more, fulfilling the minimum of 3 guests for the extra artist and the minimum of 2 guests for ${artistName}.`);
+    writePara('In the event of significant cancellations on behalf of guests resulting in any of the booked additional artists not having the minimum of 3 guests guaranteed, they may:');
+    writePara('A) Not attend, and the bride loses the deposit previously paid.', 5);
+    writePara('B) Attend, but the bride must cover the remaining amount to meet the minimum number of guests.', 5);
+
+    writeSection('6. TRAVEL FEES');
+    writePara(`At the time of this contract, the location for make-up services is set to take place at ${venue || '[Venue]'}, to which a €${travelFee} travel fee is to be charged on behalf of ${artistName}. If the location changes, the fee may change. Travel fees are calculated based on the distance between the artist's individual headquarters and the venue.`);
+    writePara(`If multiple artists travel in the same vehicle, each extra artist requires an additional travel fee that corresponds to 35% of ${artistName}'s fee.`);
+
+    writeSection('7. TOUCH-UPS & SECOND LOOKS');
+    writePara('If the bride requires a make-up change or additional touch-ups during the event, this must be pre-booked.');
+    writePara('If the bride is not present at the agreed return time for the touch-up or look change, a €50 waiting fee will be charged after the first 30 minutes and €50 per hour thereafter.');
+
+    writeSection('8. TIME MANAGEMENT ON THE BOOKED DAYS');
+    writePara(`${artistName} refrains from booking any other event on the booked days until 30 days before the booked day (${weddingDatesStr}). When this time comes, a schedule must be organized, the financial summary adjusted if necessary, and a time slot will be closed, allowing ${artistName} to book other events as long as they do not interfere with the allocated time slot. Fresh Faced is involved in approving and budgeting this time slot. For the client to have ${artistName} not book any other event even 30 days before the wedding, an exclusivity fee of €100 per day must be paid.`);
+    writePara(`This fee does not buy ${artistName}'s time, that will be charged according to point 7 of this contract, it only guarantees that ${artistName} will be available (not present) for the full day.`);
+
+    writeSection('9. PAYMENTS RECEIVED AND CONFIRMED APPOINTMENTS');
+    if (mainDepositPayment) {
+      const paidDate = mainDepositPayment.date
+        ? new Date(mainDepositPayment.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '[date]';
+      writePara(`The client has paid a deposit of €${mainDepositPayment.amount.toFixed(2)} on ${paidDate}.`);
+    } else {
+      writePara('The client has not paid any deposit yet.');
+    }
+
+    writeSection('10. FORCE MAJEURE');
+    writePara('In the event of illness, accident, or unforeseen circumstances, Fresh Faced will make every effort to find a replacement artist.');
+    writePara('If no replacement is available, a refund of the deposit will be issued.');
+
+    writeSection('11. FINANCIAL SUMMARY');
+    writePara(`Up to ${todayStr} and based on the information given by the client, this is what is expected to be paid by the client. This summary can change if requirements are changed or added by the client:`);
+    y += 3;
+
+    const colLabelX2 = margin;
+    const colCalcX2 = margin + 80;
+    const colTotalX2 = margin + 140;
+    const colLabelWidth2 = colCalcX2 - colLabelX2 - 2;
+    const colCalcWidth2 = colTotalX2 - colCalcX2 - 2;
+
+    const drawSummaryRow = (label: string, calc: string, total: string, bold = false) => {
+      pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+      pdf.setFontSize(9);
+      const labelLines = pdf.splitTextToSize(sanitizeC(label), colLabelWidth2);
+      const calcLines = calc ? pdf.splitTextToSize(sanitizeC(calc), colCalcWidth2) : [''];
+      const rowLines = Math.max(labelLines.length, calcLines.length);
+      const rowH = rowLines * lh;
+      checkPage(rowH + 2);
+      pdf.text(labelLines, colLabelX2, y);
+      if (calc) pdf.text(calcLines, colCalcX2, y);
+      if (total) pdf.text(sanitizeC(total), colTotalX2, y);
+      y += rowH;
+    };
+
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    checkPage(10);
+    pdf.text(`${makeupCalc.artistName} - Make-up`, margin, y);
+    y += 7;
+
+    const globalLines2 = makeupCalc.lines.filter(l => !makeupCalc.dayBreakdowns.some(db => db.lines.includes(l)));
+    if (globalLines2.length > 0) {
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('SERVICE', colLabelX2, y);
+      pdf.text('CALCULATION', colCalcX2, y);
+      pdf.text('TOTAL', colTotalX2, y);
+      y += 2; pdf.line(margin, y, pageWidth - margin, y); y += 4;
+      globalLines2.forEach(line => {
+        drawSummaryRow(line.label, line.qty && line.unit ? `${line.qty} x €${line.unit.toFixed(2)}` : '', `€${line.total.toFixed(2)}`);
+      });
+      y += 2; pdf.line(margin, y, pageWidth - margin, y); y += 4;
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+      const preSub = globalLines2.reduce((s, l) => s + l.total, 0);
+      pdf.text('SUBTOTAL PRE-WEDDING', margin, y);
+      pdf.text(`€${preSub.toFixed(2)}`, colTotalX2, y);
+      y += 8;
+    }
+
+    makeupCalc.dayBreakdowns.forEach((day, di) => {
+      checkPage(15);
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
+      pdf.text(formatDayHeader(day, di), margin, y);
+      y += 6;
+      pdf.setFontSize(9);
+      pdf.text('SERVICE', colLabelX2, y);
+      pdf.text('CALCULATION', colCalcX2, y);
+      pdf.text('TOTAL', colTotalX2, y);
+      y += 2; pdf.line(margin, y, pageWidth - margin, y); y += 4;
+      pdf.setFont('helvetica', 'normal');
+      day.lines.forEach(line => {
+        drawSummaryRow(line.label, line.qty && line.unit ? `${line.qty} x €${line.unit.toFixed(2)}` : '', `€${line.total.toFixed(2)}`);
+      });
+      y += 2; pdf.line(margin, y, pageWidth - margin, y); y += 4;
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9);
+      pdf.text(`SUBTOTAL DAY ${di + 1}`, margin, y);
+      pdf.text(`€${day.subtotal.toFixed(2)}`, colTotalX2, y);
+      y += 8;
+    });
+
+    checkPage(10);
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
+    pdf.text('PAYMENTS- Make-up', margin, y);
+    y += 6;
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9);
+    if (makeupCalc.payments.length > 0) {
+      makeupCalc.payments.forEach(p => {
+        checkPage(lh + 2);
+        pdf.text(`${formatDateForDisplay(p.date)}: ${p.occasion || 'Payment'}`, margin + 10, y);
+        pdf.text(`€${p.amount.toFixed(2)}`, colTotalX2, y);
+        y += lh;
+      });
+    } else {
+      pdf.text('No payments recorded', margin + 10, y);
+      pdf.text('€0.00', colTotalX2, y);
+      y += lh;
+    }
+    y += 2; pdf.line(margin, y, pageWidth - margin, y); y += 4;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`TOTAL OF ${makeupCalc.artistName}'s MAKE-UP SERVICES`, margin + 10, y);
+    pdf.text(`€${makeupCalc.subtotal.toFixed(2)}`, colTotalX2, y);
+    y += 4; pdf.line(margin, y, pageWidth - margin, y); y += 4;
+    pdf.setTextColor(5, 150, 105);
+    pdf.text('DUE (Make-up)', margin + 10, y);
+    pdf.text(`€${makeupCalc.due.toFixed(2)}`, colTotalX2, y);
+    pdf.setTextColor(0, 0, 0);
+    y += 10;
+
+    writeSection('12. AGREEMENT');
+    writePara('By signing this agreement, the client acknowledges and agrees to all the terms and conditions outlined above.');
+    y += 6;
+    writeText('Client Name: ________________________'); y += 4;
+    writeText('Client Signature: ________________________'); y += 4;
+    writeText('Date: ______________'); y += 8;
+    writeText('Fresh Faced Artist Name: ________________________'); y += 4;
+    writeText('Fresh Faced Artist Signature: ________________________'); y += 4;
+    writeText('Date: ______________');
+
+    const safeBride = (brideName || 'Client').replace(/[^a-zA-Z0-9_\- ]/g, '');
+    pdf.save(`${safeBride} - Makeup Contract.pdf`);
   };
 
   const exportToPDF = async () => {
@@ -1917,6 +2192,11 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         <button type="button" onClick={exportToPDF} className="btn btn-secondary">
           Export PDF
         </button>
+        {localCalculations.some(c => c.serviceType === 'makeup') && makeupForm && (
+          <button type="button" onClick={downloadMakeupContract} className="btn btn-secondary">
+            Download Makeup Contract PDF
+          </button>
+        )}
       </div>
 
       <div className="form-actions">
