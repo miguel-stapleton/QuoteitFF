@@ -754,6 +754,44 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     const writePara = (text: string, indent = 0) => { writeText(text, 10, false, indent); y += 2; };
     const writeSection = (text: string) => { y += 3; checkPage(12); writeText(text, 11, true); y += 1; };
 
+    // Render a paragraph with inline bold/normal segments, with word wrapping
+    const writeMixed = (parts: { text: string; bold: boolean }[], indent = 0) => {
+      pdf.setFontSize(10);
+      const spaceW = (() => { pdf.setFont('helvetica', 'normal'); return pdf.getTextWidth(' '); })();
+      const maxW = textWidth - indent;
+      // Tokenise into words with style
+      const words: { w: string; bold: boolean; ww: number }[] = [];
+      parts.forEach(p => {
+        p.text.split(/( )/).forEach(tok => {
+          if (tok === ' ' || tok === '') return;
+          pdf.setFont('helvetica', p.bold ? 'bold' : 'normal');
+          words.push({ w: tok, bold: p.bold, ww: pdf.getTextWidth(tok) });
+        });
+      });
+      let lineTokens: typeof words = [];
+      let lineW = 0;
+      const flushLine = () => {
+        checkPage(lh + 2);
+        let x = margin + indent;
+        lineTokens.forEach((tok, i) => {
+          pdf.setFont('helvetica', tok.bold ? 'bold' : 'normal');
+          pdf.setFontSize(10);
+          pdf.text(tok.w, x, y);
+          x += tok.ww + (i < lineTokens.length - 1 ? spaceW : 0);
+        });
+        y += lh;
+        lineTokens = []; lineW = 0;
+      };
+      words.forEach(tok => {
+        const add = lineW === 0 ? tok.ww : spaceW + tok.ww;
+        if (lineW > 0 && lineW + add > maxW) flushLine();
+        lineTokens.push(tok);
+        lineW += lineW === 0 ? tok.ww : spaceW + tok.ww;
+      });
+      if (lineTokens.length > 0) flushLine();
+      y += 2;
+    };
+
     // Logo
     try {
       const logoImg = new Image();
@@ -775,13 +813,13 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
     writeSection('1. SERVICES PROVIDED');
     writePara('The make-up artist agrees to provide the following beauty services:');
-    writePara(`Bridal Make-up Trial (optional) - €${trialPrice} (must be held in Lisbon)`, 5);
-    writePara(`Bridal Make-up on the Wedding Day - €${mainPrice}`, 5);
-    writePara(`Guest Make-up Services (if applicable) - €${guestPrice} per guest to be made up in the same preparation area as the bride, taking care of a maximum of 4 guests.`, 5);
-    writePara(`Scheduled Return for Make-up Change/Touch-up (Second Look, if applicable) - €${returnPrice}`, 5);
-    writePara(`Standby for Touch-ups (if applicable) - €${touchupHourly} per hour from the moment the artist finishes completing make-up on the bride and all guests (no more than 20 minutes between guests) until the moment the artist leaves.`, 5);
-    writePara(`Exclusivity Fee (if applicable) - €100. Exclusivity on a day that has already been booked by paying a €100 deposit is guaranteed until 30 days before the wedding date, up to which a time slot for the make-up artist's services must be defined. From this moment on, the make-up artist is free to allow bookings for other jobs that do not interfere with the agreed upon time slot. By paying an exclusivity fee, this freedom is revoked from the make-up artist, and all other bookings for the booked day will be rejected for this date until the last moment.`, 5);
-    writePara(`Traveling fee: To ${venue || '[Venue]'}, a traveling fee of €${travelFee} will be charged for ${artistName} alone.`, 5);
+    writeMixed([{ text: 'Bridal Make-up Trial', bold: true }, { text: ` (optional) - €${trialPrice} (must be held in Lisbon)`, bold: false }], 5);
+    writeMixed([{ text: 'Bridal Make-up on the Wedding Day', bold: true }, { text: ` - €${mainPrice}`, bold: false }], 5);
+    writeMixed([{ text: 'Guest Make-up Services', bold: true }, { text: ` (if applicable) - €${guestPrice} per guest to be made up in the same preparation area as the bride, taking care of a maximum of 4 guests.`, bold: false }], 5);
+    writeMixed([{ text: 'Scheduled Return for Make-up Change/Touch-up', bold: true }, { text: ` (Second Look, if applicable) - €${returnPrice}`, bold: false }], 5);
+    writeMixed([{ text: 'Standby for Touch-ups', bold: true }, { text: ` (if applicable) - €${touchupHourly} per hour from the moment the artist finishes completing make-up on the bride and all guests (no more than 20 minutes between guests) until the moment the artist leaves.`, bold: false }], 5);
+    writeMixed([{ text: 'Exclusivity Fee', bold: true }, { text: ` (if applicable) - €100. Exclusivity on a day that has already been booked by paying a €100 deposit is guaranteed until 30 days before the wedding date, up to which a time slot for the make-up artist's services must be defined. From this moment on, the make-up artist is free to allow bookings for other jobs that do not interfere with the agreed upon time slot. By paying an exclusivity fee, this freedom is revoked from the make-up artist, and all other bookings for the booked day will be rejected for this date until the last moment.`, bold: false }], 5);
+    writeMixed([{ text: 'Traveling fee:', bold: true }, { text: ` To ${venue || '[Venue]'}, a traveling fee of €${travelFee} will be charged for ${artistName} alone.`, bold: false }], 5);
 
     writeSection('2. BOOKING AND DEPOSIT');
     writePara(`A €${depositAmount.toFixed(0)} non-refundable deposit of the bridal make-up service fee is required to secure the booking of each day. The value for the trial is to be paid on the trial day.`);
@@ -928,7 +966,31 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     pdf.text('DUE (Make-up)', margin + 10, y);
     pdf.text(`€${makeupCalc.due.toFixed(2)}`, colTotalX2, y);
     pdf.setTextColor(0, 0, 0);
-    y += 10;
+    y += 8;
+
+    if (makeupCalc.priorityWarnings && makeupCalc.priorityWarnings.length > 0) {
+      checkPage(12);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(185, 28, 28);
+      pdf.text('PRIORITY', margin, y);
+      y += 5;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      makeupCalc.priorityWarnings.forEach(warning => {
+        if (warning.text?.trim()) {
+          const lines = pdf.splitTextToSize('- ' + sanitizeC(warning.text), textWidth - 5);
+          lines.forEach((line: string) => {
+            checkPage(lh + 2);
+            pdf.text(line, margin + 5, y);
+            y += lh;
+          });
+          y += 2;
+        }
+      });
+      pdf.setTextColor(0, 0, 0);
+    }
+    y += 4;
 
     writeSection('12. AGREEMENT');
     writePara('By signing this agreement, the client acknowledges and agrees to all the terms and conditions outlined above.');
