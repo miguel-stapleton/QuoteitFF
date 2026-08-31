@@ -642,17 +642,6 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       }
     });
 
-    // Per-day totals across services
-    const perDayTotals = computePerDayTotals(localCalculations);
-    if (perDayTotals.length > 0) {
-      content += separator + '\n';
-      content += 'FINAL FINANCIAL SUMMARY PER DAY\n';
-      content += lineSeparator + '\n';
-      perDayTotals.forEach(d => {
-        const displayLabel = d.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(d.date);
-        content += formatLine(displayLabel, '', `€${d.total.toFixed(2)}`) + '\n';
-      });
-    }
 
     if (localCalculations.length > 1) {
       content += separator + '\n';
@@ -1146,8 +1135,11 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           currentY += sectionSpacing;
         }
 
-        // Per-day sections
-        (calc.dayBreakdowns || []).forEach((day, dayIndex) => {
+        // Per-day sections — sorted chronologically
+        const sortedBreakdowns = [...(calc.dayBreakdowns || [])].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        sortedBreakdowns.forEach((day, dayIndex) => {
           if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(11);
@@ -1275,22 +1267,6 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
       // Per-day totals across services
       const perDayTotals = computePerDayTotals(localCalculations);
-      if (perDayTotals.length > 0) {
-        if (currentY > pageHeight - 60) { pdf.addPage(); currentY = margin; }
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('FINAL FINANCIAL SUMMARY PER DAY', margin, currentY);
-        currentY += sectionSpacing;
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
-        perDayTotals.forEach(d => {
-          const displayLabel = d.date === 'Pre-wedding' ? 'Pre-wedding' : formatDateWithVenue(d.date);
-          pdf.text(displayLabel, margin, currentY);
-          pdf.text(`€${d.total.toFixed(2)}`, margin + 140, currentY);
-          currentY += lineHeight;
-        });
-        currentY += sectionSpacing;
-      }
 
       // Grand Summary for multiple services
       if (localCalculations.length > 1) {
