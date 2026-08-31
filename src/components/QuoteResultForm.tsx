@@ -1265,9 +1265,6 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         }
       });
 
-      // Per-day totals across services
-      const perDayTotals = computePerDayTotals(localCalculations);
-
       // Grand Summary for multiple services
       if (localCalculations.length > 1) {
         if (currentY > pageHeight - 40) {
