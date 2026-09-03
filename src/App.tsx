@@ -187,6 +187,9 @@ export default function App() {
             appVersion={appState.version}
             commissions={appState.commissions}
             onCommissionsChange={updateCommissions}
+            ivaEnabled={appState.ivaEnabled}
+            ivaRate={appState.ivaRate}
+            onIvaChange={(enabled) => updateIva(enabled, appState.ivaRate)}
           />
         );
       

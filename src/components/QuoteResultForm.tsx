@@ -22,11 +22,15 @@ interface QuoteResultFormProps {
   // Commissions (UI-only, excluded from PDF)
   commissions?: CommissionEntry[];
   onCommissionsChange?: (commissions: CommissionEntry[]) => void;
+  // IVA
+  ivaEnabled?: boolean;
+  ivaRate?: number;
+  onIvaChange?: (enabled: boolean) => void;
 }
 
 export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   calculations,
-  grandSummary,
+  grandSummary: grandSummaryProp,
   brideName,
   onPaymentUpdate,
   onStartOver,
@@ -37,8 +41,24 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   getAppState,
   appVersion,
   commissions,
-  onCommissionsChange
+  onCommissionsChange,
+  ivaEnabled: ivaEnabledProp = false,
+  ivaRate: ivaRateProp = 0.23,
+  onIvaChange
 }) => {
+  const [localIvaEnabled, setLocalIvaEnabled] = useState(ivaEnabledProp || grandSummaryProp.ivaAmount != null);
+
+  // Derive grandSummary with IVA applied locally so the toggle on this screen always works
+  const grandSummary: GrandSummary = (() => {
+    const base = grandSummaryProp;
+    if (localIvaEnabled) {
+      const ivaAmount = base.grandTotal * ivaRateProp;
+      return { ...base, ivaRate: ivaRateProp, ivaAmount, totalInclIva: base.grandTotal + ivaAmount };
+    }
+    // Strip IVA fields if disabled
+    const { ivaRate: _r, ivaAmount: _a, totalInclIva: _t, ...rest } = base as any;
+    return rest as GrandSummary;
+  })();
   const [localCalculations, setLocalCalculations] = useState<CalculationResult[]>(calculations);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<null | { type: 'success' | 'error' | 'info'; text: string }>(null);
@@ -2216,6 +2236,22 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       </div>
 
       {renderCommissionsSection()}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderTop: '1px solid #e5e7eb', marginTop: '0.5rem' }}>
+        <input
+          id="result-iva-toggle"
+          type="checkbox"
+          checked={localIvaEnabled}
+          onChange={(e) => {
+            setLocalIvaEnabled(e.target.checked);
+            onIvaChange?.(e.target.checked);
+          }}
+          style={{ width: '1.1rem', height: '1.1rem', cursor: 'pointer' }}
+        />
+        <label htmlFor="result-iva-toggle" style={{ cursor: 'pointer', fontWeight: 500 }}>
+          Apply IVA (23%) to grand total
+        </label>
+      </div>
 
       <div className="export-actions">
         <button type="button" onClick={copyRichText} className="btn btn-secondary">
