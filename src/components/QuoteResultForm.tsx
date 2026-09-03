@@ -491,7 +491,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         </table>
       </div>` : '';
 
-    const grandSummaryHTML = localCalculations.length > 1 ? `
+    const grandSummaryHTML = (localCalculations.length > 1 || grandSummary.ivaAmount != null) ? `
       <div style="margin-top: 16px; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.1); border: 2px solid #3b82f6; overflow: hidden;">
         <div style="background: #3b82f6; color: white; padding: 16px 24px; text-align: center;">
           <h3 style="margin: 0; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Grand Summary</h3>
@@ -643,7 +643,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
     });
 
 
-    if (localCalculations.length > 1) {
+    if (localCalculations.length > 1 || grandSummary.ivaAmount != null) {
       content += separator + '\n';
       content += 'GRAND SUMMARY\n';
       content += lineSeparator + '\n';
@@ -1265,8 +1265,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         }
       });
 
-      // Grand Summary for multiple services
-      if (localCalculations.length > 1) {
+      // Grand Summary for multiple services or when IVA is enabled
+      if (localCalculations.length > 1 || grandSummary.ivaAmount != null) {
         if (currentY > pageHeight - 40) {
           pdf.addPage();
           currentY = margin;
@@ -2180,7 +2180,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
 
         {renderPerDayTotalsCard()}
 
-        {localCalculations.length > 1 && (
+        {(localCalculations.length > 1 || grandSummary.ivaAmount != null) && (
           <div className="grand-summary-card">
             <div className="grand-summary-header">
               <h3>Grand Summary</h3>
