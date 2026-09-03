@@ -780,7 +780,18 @@ export const PriceConfirmationForm: React.FC<PriceConfirmationFormProps> = ({
             id="iva-toggle"
             type="checkbox"
             checked={ivaEnabled}
-            onChange={(e) => onIvaChange(e.target.checked)}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              onIvaChange(enabled);
+              // Recalculate immediately with the new IVA state
+              const weddingDates = multiDay.dates.filter(d => d !== '').slice(0, multiDay.count || 1);
+              const result = calculateQuote({
+                serviceChoice, makeupForm, hairForm,
+                prices: currentPrices, weddingDates, existingCalculations,
+                ivaEnabled: enabled, ivaRate
+              });
+              onCalculationsUpdate(result.calculations, result.grandSummary);
+            }}
             style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
           />
         </div>
