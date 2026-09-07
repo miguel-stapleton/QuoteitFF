@@ -2141,7 +2141,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                   <span className="payment-summary-amount paid-total">{formatCurrency(calc.totalPaid)}</span>
                 </div>
                 <div className="payment-summary-row">
-                  <span className="payment-summary-label" style={{ color: '#059669' }}>DUE:</span>
+                  <span className="payment-summary-label" style={{ color: localIvaEnabled ? undefined : '#059669' }}>DUE:</span>
                   <span className="payment-summary-amount due-total">{formatCurrency(calc.due)}</span>
                 </div>
               </div>
@@ -2227,7 +2227,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                 <span className="summary-amount paid-total">{formatCurrency(grandSummary.totalPaid)}</span>
               </div>
               <div className="summary-row">
-                <span className="summary-label" style={{ color: '#059669' }}>TOTAL DUE</span>
+                <span className="summary-label" style={{ color: localIvaEnabled ? '#059669' : undefined }}>TOTAL DUE</span>
                 <span className="summary-amount due-total">{formatCurrency(grandSummary.totalDue)}</span>
               </div>
             </div>
