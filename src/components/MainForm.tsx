@@ -47,6 +47,7 @@ export const MainForm: React.FC<MainFormProps> = ({
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [quoteSearch, setQuoteSearch] = useState('');
 
   const openLoadModal = async () => {
     try {
@@ -384,11 +385,23 @@ export const MainForm: React.FC<MainFormProps> = ({
               {loadingQuotes && <p>Loading…</p>}
               {loadError && <p style={{ color: '#b91c1c' }}>{loadError}</p>}
               {!loadingQuotes && !loadError && (
+                <>
+                  <input
+                    type="search"
+                    placeholder="Search quotes…"
+                    value={quoteSearch}
+                    onChange={(e) => setQuoteSearch(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', marginBottom: '10px', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                    autoFocus
+                  />
                 <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {quotes.length === 0 ? (
                     <p>No saved quotes found.</p>
-                  ) : (
-                    quotes.map(q => (
+                  ) : (() => {
+                    const filtered = quotes.filter(q => q.title.toLowerCase().includes(quoteSearch.toLowerCase()));
+                    return filtered.length === 0 ? (
+                      <p style={{ color: '#6b7280' }}>No quotes match your search.</p>
+                    ) : filtered.map(q => (
                       <div key={q._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
                         <div>
                           <div style={{ fontWeight: 600 }}>{q.title}</div>
@@ -399,12 +412,13 @@ export const MainForm: React.FC<MainFormProps> = ({
                           <button className="btn btn-danger btn-small" onClick={() => deleteQuoteById(q._id)}>Delete</button>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
+                </>
               )}
               <div className="modal-actions" style={{ marginTop: '1rem' }}>
-                <button className="btn btn-secondary" onClick={() => setShowLoadModal(false)}>Close</button>
+                <button className="btn btn-secondary" onClick={() => { setShowLoadModal(false); setQuoteSearch(''); }}>Close</button>
               </div>
             </div>
           </div>
