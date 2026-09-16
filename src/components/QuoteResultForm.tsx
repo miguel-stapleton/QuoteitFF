@@ -2106,11 +2106,19 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                             <span className="currency" aria-hidden="true">€</span>
                             <input
                               id={`amount-${payment.id}`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={payment.amount}
-                              onChange={(e) => updatePayment(index, payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                              type="text"
+                              inputMode="decimal"
+                              value={payment.amount === 0 ? '' : payment.amount}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(',', '.');
+                                const num = parseFloat(raw);
+                                updatePayment(index, payment.id, 'amount', isNaN(num) ? 0 : num);
+                              }}
+                              onBlur={(e) => {
+                                const raw = e.target.value.replace(',', '.');
+                                const num = parseFloat(raw);
+                                updatePayment(index, payment.id, 'amount', isNaN(num) ? 0 : Math.max(0, num));
+                              }}
                               className="payment-amount-input"
                             />
                           </div>
