@@ -67,6 +67,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
   const [pendingOverwrite, setPendingOverwrite] = useState<{title: string, payload: any, existingId?: string} | null>(null);
   const [localCommissions, setLocalCommissions] = useState<CommissionEntry[]>(commissions || []);
+  const [amountStrings, setAmountStrings] = useState<Record<string, string>>({});
   const showNotice = (n: { type: 'success' | 'error' | 'info'; text: string }, timeoutMs = 3500) => {
     setNotice(n);
     if (timeoutMs > 0) {
@@ -2108,16 +2109,16 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
                               id={`amount-${payment.id}`}
                               type="text"
                               inputMode="decimal"
-                              value={payment.amount === 0 ? '' : payment.amount}
+                              value={amountStrings[payment.id] ?? (payment.amount === 0 ? '' : String(payment.amount))}
                               onChange={(e) => {
-                                const raw = e.target.value.replace(',', '.');
-                                const num = parseFloat(raw);
-                                updatePayment(index, payment.id, 'amount', isNaN(num) ? 0 : num);
+                                setAmountStrings(prev => ({ ...prev, [payment.id]: e.target.value }));
                               }}
                               onBlur={(e) => {
                                 const raw = e.target.value.replace(',', '.');
                                 const num = parseFloat(raw);
-                                updatePayment(index, payment.id, 'amount', isNaN(num) ? 0 : Math.max(0, num));
+                                const committed = isNaN(num) ? 0 : Math.max(0, num);
+                                setAmountStrings(prev => ({ ...prev, [payment.id]: committed === 0 ? '' : String(committed) }));
+                                updatePayment(index, payment.id, 'amount', committed);
                               }}
                               className="payment-amount-input"
                             />
