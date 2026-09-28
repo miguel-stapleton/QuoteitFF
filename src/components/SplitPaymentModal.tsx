@@ -88,6 +88,8 @@ export function SplitPaymentModal({ calculations, onClose }: Props) {
   const [assignments, setAssignments] = useState<Assignments>({});
 
   // Step 3
+  const [numMUAAssistants, setNumMUAAssistants]     = useState<number | null>(null); // null = not yet set
+  const [numHairAssistants, setNumHairAssistants]   = useState<number | null>(null);
   const [assistantMUANames, setAssistantMUANames]   = useState<string[]>([]);
   const [assistantHairNames, setAssistantHairNames] = useState<string[]>([]);
   const [artistAssignments, setArtistAssignments]   = useState<ArtistAssignments>({});
@@ -130,8 +132,10 @@ export function SplitPaymentModal({ calculations, onClose }: Props) {
     hair:   hairCalc   ? dayTravelLines(hairCalc,   di).assistantQty : 0,
   })), [days, makeupCalc, hairCalc]);
 
-  const maxMUAAssistants  = Math.max(...assistantCounts.map(d => d.makeup), 0);
-  const maxHairAssistants = Math.max(...assistantCounts.map(d => d.hair),   0);
+  const defaultMUAAssistants  = Math.max(...assistantCounts.map(d => d.makeup), 0);
+  const defaultHairAssistants = Math.max(...assistantCounts.map(d => d.hair),   0);
+  const maxMUAAssistants  = numMUAAssistants  ?? defaultMUAAssistants;
+  const maxHairAssistants = numHairAssistants ?? defaultHairAssistants;
 
   // Available artists per service (filled with real names from step 3 inputs)
   const makeupArtists = useMemo(() =>
@@ -183,7 +187,9 @@ export function SplitPaymentModal({ calculations, onClose }: Props) {
           return;
         }
       }
-      // Init assistant name arrays
+      // Init assistant counts and name arrays
+      setNumMUAAssistants(n => n ?? defaultMUAAssistants);
+      setNumHairAssistants(n => n ?? defaultHairAssistants);
       setAssistantMUANames(prev => {
         const a = Array(maxMUAAssistants).fill('');
         return a.map((_, i) => prev[i] ?? '');
@@ -558,6 +564,38 @@ export function SplitPaymentModal({ calculations, onClose }: Props) {
         {step === 3 && (
           <div>
             <p style={{ marginTop: 0, color: '#374151' }}>Name your assistants, then assign an artist to each guest.</p>
+
+            {/* Assistant counts */}
+            <div style={{ display: 'flex', gap: 24, marginBottom: 16, flexWrap: 'wrap' }}>
+              {makeupCalc && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500, fontSize: 14 }}>
+                  Makeup assistants:
+                  <input type="number" min={0} max={10}
+                    value={numMUAAssistants ?? defaultMUAAssistants}
+                    onChange={e => {
+                      const n = Math.max(0, parseInt(e.target.value) || 0);
+                      setNumMUAAssistants(n);
+                      setAssistantMUANames(prev => Array(n).fill('').map((_, i) => prev[i] ?? ''));
+                    }}
+                    style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 }}
+                  />
+                </label>
+              )}
+              {hairCalc && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500, fontSize: 14 }}>
+                  Hair assistants:
+                  <input type="number" min={0} max={10}
+                    value={numHairAssistants ?? defaultHairAssistants}
+                    onChange={e => {
+                      const n = Math.max(0, parseInt(e.target.value) || 0);
+                      setNumHairAssistants(n);
+                      setAssistantHairNames(prev => Array(n).fill('').map((_, i) => prev[i] ?? ''));
+                    }}
+                    style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 }}
+                  />
+                </label>
+              )}
+            </div>
 
             {/* Assistant names */}
             {maxMUAAssistants > 0 && (
