@@ -2270,7 +2270,10 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           Copy Plain Text
         </button>
         <button type="button" onClick={exportToPDF} className="btn btn-secondary">
-          Export PDF
+          Download Financial Summary — Bride Pays for All
+        </button>
+        <button type="button" className="btn btn-secondary" disabled>
+          Split Payment Among Clients
         </button>
         {localCalculations.some(c => c.serviceType === 'makeup') && makeupForm && (
           <button type="button" onClick={downloadMakeupContract} className="btn btn-secondary">
