@@ -272,7 +272,6 @@ export function SplitPaymentModal({ calculations, makeupForm, hairForm, onClose 
 
     const makeupGuestUnit = makeupCalc ? guestUnitPrice(makeupCalc) : 0;
     const hairGuestUnit   = hairCalc   ? guestUnitPrice(hairCalc)   : 0;
-    const totalPaid = calculations.reduce((s, c) => s + c.totalPaid, 0);
 
     // Build per-payer per-service breakdown
     // { payer -> { makeup: [{label, amount}], hair: [{label, amount}] } }
@@ -384,14 +383,32 @@ export function SplitPaymentModal({ calculations, makeupForm, hairForm, onClose 
     pdf.text('Split Payment Summary', margin, y);
     y += 10;
 
+    // Payments split by service type (bride only)
+    const makeupPayments = makeupCalc?.payments ?? [];
+    const hairPayments   = hairCalc?.payments   ?? [];
+    const makeupPaid     = makeupPayments.reduce((s, p) => s + p.amount, 0);
+    const hairPaid       = hairPayments.reduce((s, p)   => s + p.amount, 0);
+
+    const svcHeader = (label: string) => {
+      needPage(8);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(label, margin + 2, y);
+      y += 5;
+      pdf.setTextColor(0);
+    };
+
     for (const payer of allPayers) {
       needPage(20);
       const bd = breakdown[payer] ?? { makeup: [], hair: [] };
-      const muTotal   = bd.makeup.reduce((s, i) => s + i.amount, 0);
-      const haTotal   = bd.hair.reduce((s, i)   => s + i.amount, 0);
-      const grossTotal = muTotal + haTotal;
-      const deduction  = payer === 'Bride' ? totalPaid : 0;
-      const netTotal   = Math.max(0, grossTotal - deduction);
+      const muTotal = bd.makeup.reduce((s, i) => s + i.amount, 0);
+      const haTotal = bd.hair.reduce((s, i)   => s + i.amount, 0);
+
+      // For bride: deduct per-service payments separately
+      const muDue = payer === 'Bride' ? Math.max(0, muTotal - makeupPaid) : muTotal;
+      const haDue = payer === 'Bride' ? Math.max(0, haTotal - hairPaid)   : haTotal;
+      const netTotal = muDue + haDue;
 
       // Section header
       pdf.setFontSize(12);
@@ -403,30 +420,44 @@ export function SplitPaymentModal({ calculations, makeupForm, hairForm, onClose 
 
       // Makeup subsection
       if (bd.makeup.length > 0) {
-        needPage(8);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(80, 80, 80);
-        pdf.text('Due for Makeup', margin + 2, y);
-        y += 5;
-        pdf.setTextColor(0);
+        svcHeader('Makeup');
         for (const item of bd.makeup) textRow(item.label, fmtEur(item.amount));
         textRow('Subtotal', fmtEur(muTotal), true);
         y += 2;
+        if (payer === 'Bride' && makeupPayments.length > 0) {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(80, 80, 80);
+          pdf.text('Payments already made for makeup:', margin + 4, y);
+          y += 5;
+          pdf.setTextColor(0);
+          for (const p of makeupPayments) {
+            textRow(`  ${p.date}: ${p.occasion}`, `− ${fmtEur(p.amount)}`, false, 100);
+          }
+          textRow('Due for Bride\'s Makeup', fmtEur(muDue), true);
+        }
+        y += 3;
       }
 
       // Hair subsection
       if (bd.hair.length > 0) {
-        needPage(8);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(80, 80, 80);
-        pdf.text('Due for Hair', margin + 2, y);
-        y += 5;
-        pdf.setTextColor(0);
+        svcHeader('Hair');
         for (const item of bd.hair) textRow(item.label, fmtEur(item.amount));
         textRow('Subtotal', fmtEur(haTotal), true);
         y += 2;
+        if (payer === 'Bride' && hairPayments.length > 0) {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(80, 80, 80);
+          pdf.text('Payments already made for hair:', margin + 4, y);
+          y += 5;
+          pdf.setTextColor(0);
+          for (const p of hairPayments) {
+            textRow(`  ${p.date}: ${p.occasion}`, `− ${fmtEur(p.amount)}`, false, 100);
+          }
+          textRow('Due for Bride\'s Hair', fmtEur(haDue), true);
+        }
+        y += 3;
       }
 
       if (bd.makeup.length === 0 && bd.hair.length === 0) {
@@ -438,10 +469,6 @@ export function SplitPaymentModal({ calculations, makeupForm, hairForm, onClose 
         y += 6;
       }
 
-      // Deduction + total
-      if (deduction > 0) {
-        textRow('Payments already made', `− ${fmtEur(deduction)}`, false, 100);
-      }
       hRule(160);
       textRow('TOTAL DUE', fmtEur(netTotal), true);
       y += 8;
