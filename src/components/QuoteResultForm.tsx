@@ -3,6 +3,7 @@ import { CalculationResult, GrandSummary, Payment, CalculationLine, MakeupForm, 
 import jsPDF from 'jspdf';
 import { QuotesAPI } from '../api/quotes';
 import { makeupArtistPrices } from '../data/services';
+import { SplitPaymentModal } from './SplitPaymentModal';
 
 interface QuoteResultFormProps {
   calculations: CalculationResult[];
@@ -68,6 +69,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
   const [pendingOverwrite, setPendingOverwrite] = useState<{title: string, payload: any, existingId?: string} | null>(null);
   const [localCommissions, setLocalCommissions] = useState<CommissionEntry[]>(commissions || []);
   const [amountStrings, setAmountStrings] = useState<Record<string, string>>({});
+  const [showSplitModal, setShowSplitModal] = useState(false);
   const showNotice = (n: { type: 'success' | 'error' | 'info'; text: string }, timeoutMs = 3500) => {
     setNotice(n);
     if (timeoutMs > 0) {
@@ -2272,7 +2274,7 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
         <button type="button" onClick={exportToPDF} className="btn btn-secondary">
           Download Financial Summary — Bride Pays for All
         </button>
-        <button type="button" className="btn btn-secondary" disabled>
+        <button type="button" className="btn btn-secondary" onClick={() => setShowSplitModal(true)}>
           Split Payment Among Clients
         </button>
         {localCalculations.some(c => c.serviceType === 'makeup') && makeupForm && (
@@ -2287,6 +2289,13 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
           Start Over
         </button>
       </div>
+
+      {showSplitModal && (
+        <SplitPaymentModal
+          calculations={localCalculations}
+          onClose={() => setShowSplitModal(false)}
+        />
+      )}
     </div>
   );
 };
