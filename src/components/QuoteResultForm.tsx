@@ -2293,6 +2293,8 @@ export const QuoteResultForm: React.FC<QuoteResultFormProps> = ({
       {showSplitModal && (
         <SplitPaymentModal
           calculations={localCalculations}
+          makeupForm={makeupForm}
+          hairForm={hairForm}
           onClose={() => setShowSplitModal(false)}
         />
       )}

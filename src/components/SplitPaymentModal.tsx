@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import jsPDF from 'jspdf';
-import type { CalculationResult } from '../types';
+import type { CalculationResult, MakeupForm, HairForm } from '../types';
 
 interface Props {
   calculations: CalculationResult[];
+  makeupForm?: MakeupForm | null;
+  hairForm?: HairForm | null;
   onClose: () => void;
 }
 
@@ -69,7 +71,7 @@ type TravelPayers = Record<'makeup' | 'hair', Record<number, Record<string, stri
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export function SplitPaymentModal({ calculations, onClose }: Props) {
+export function SplitPaymentModal({ calculations, makeupForm, hairForm, onClose }: Props) {
   const makeupCalc = calculations.find(c => c.serviceType === 'makeup') ?? null;
   const hairCalc   = calculations.find(c => c.serviceType === 'hair')   ?? null;
   const days       = (makeupCalc ?? hairCalc)?.dayBreakdowns ?? [];
@@ -132,8 +134,13 @@ export function SplitPaymentModal({ calculations, onClose }: Props) {
     hair:   hairCalc   ? dayTravelLines(hairCalc,   di).assistantQty : 0,
   })), [days, makeupCalc, hairCalc]);
 
-  const defaultMUAAssistants  = Math.max(...assistantCounts.map(d => d.makeup), 0);
-  const defaultHairAssistants = Math.max(...assistantCounts.map(d => d.hair),   0);
+  // Derive from numPeople - 1 across all days (user-entered "how many people incl. main artist")
+  const defaultMUAAssistants = makeupForm
+    ? Math.max(...(makeupForm.perDay.map(d => Math.max(0, (d.numPeople ?? 1) - 1))), 0)
+    : Math.max(...assistantCounts.map(d => d.makeup), 0);
+  const defaultHairAssistants = hairForm
+    ? Math.max(...(hairForm.perDay.map(d => Math.max(0, (d.numPeople ?? 1) - 1))), 0)
+    : Math.max(...assistantCounts.map(d => d.hair), 0);
   const maxMUAAssistants  = numMUAAssistants  ?? defaultMUAAssistants;
   const maxHairAssistants = numHairAssistants ?? defaultHairAssistants;
 
